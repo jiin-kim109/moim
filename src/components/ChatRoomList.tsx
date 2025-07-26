@@ -25,7 +25,7 @@ function ChatRoomListItem({ chatRoom, onPress }: ChatRoomListItemProps) {
       {/* Thumbnail */}
       <Image 
         source={chatRoom.thumbnail_url ? { uri: chatRoom.thumbnail_url } : require('@assets/chatroom-default.png')}
-        className="w-24 h-24 pr-3 pb-3 rounded-3xl ml-1 mr-3 flex-shrink-0"
+        className="w-24 h-24 pt-1 pl-1 pr-4 pb-5 rounded-3xl ml-1 mr-2 flex-shrink-0"
         resizeMode="cover"
       />
       

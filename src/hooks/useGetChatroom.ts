@@ -1,10 +1,11 @@
 import {
+    QueryClient,
   useQuery,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 import supabase from '../lib/supabase';
-import { ChatRoom } from './types';
+import { ChatRoom, ChatRoomParticipant } from './types';
 
 export type GetChatroomError = {
   message: string;
@@ -16,9 +17,16 @@ export function transformChatroomData(data: any): ChatRoom {
     throw new Error("Transforming chatroom data failed: No data provided");
   }
 
+  const participants: ChatRoomParticipant[] = (data.chatroom_participants || []).map((participant: any) => ({
+    user_id: participant.user_id,
+    nickname: participant.nickname,
+    joined_at: participant.joined_at,
+  }));
+
   return {
     ...data,
-    participant_count: data.chatroom_participants?.length || 0,
+    participant_count: participants.length,
+    participants,
   } as ChatRoom;
 }
 
@@ -59,3 +67,7 @@ export function useGetChatroom(
     ...queryOptions,
   });
 } 
+
+export function invalidateChatroomQuery(queryClient: QueryClient, chatroomId: string) {
+  queryClient.invalidateQueries({ queryKey: ["chatroom", chatroomId] });
+}

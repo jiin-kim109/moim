@@ -26,14 +26,7 @@ export const fetchPublicChatrooms = async (): Promise<ChatRoom[]> => {
     throw new Error(`Failed to fetch chatrooms: ${error.message}`);
   }
 
-  const chatRoomsWithDetails = (data || []).map((room) => {
-    return {
-      ...room,
-      participant_count: room.chatroom_participants?.length || 0,
-    };
-  });
-
-  return chatRoomsWithDetails.map(transformChatroomData);
+  return (data || []).map(transformChatroomData);
 };
 
 export function useGetPublicChatrooms(
