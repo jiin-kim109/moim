@@ -7,5 +7,5 @@ CREATE POLICY "Users can join chatrooms" ON chatroom_participants
 
 CREATE POLICY "Users can update their own participant records" ON chatroom_participants
     FOR UPDATE USING (
-        user_id = (SELECT id FROM user_profile WHERE auth_id = auth.uid())
+        user_id = auth.uid()
     ); 

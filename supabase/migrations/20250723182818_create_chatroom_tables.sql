@@ -1,7 +1,7 @@
 -- Create chatroom table
 CREATE TABLE chatroom (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-    host_id TEXT NOT NULL REFERENCES user_profile(id) ON DELETE CASCADE,
+    host_id UUID NOT NULL REFERENCES user_profile(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     description TEXT,
     thumbnail_url TEXT,
@@ -14,7 +14,7 @@ CREATE TABLE chatroom (
 CREATE TABLE chatroom_participants (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     chatroom_id TEXT NOT NULL REFERENCES chatroom(id) ON DELETE CASCADE,
-    user_id TEXT NOT NULL REFERENCES user_profile(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES user_profile(id) ON DELETE CASCADE,
     nickname TEXT,
     joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(chatroom_id, user_id)
@@ -41,15 +41,15 @@ CREATE POLICY "All users can view chatrooms" ON chatroom
 
 -- Users can update chatrooms they host
 CREATE POLICY "Hosts can update their chatrooms" ON chatroom
-    FOR UPDATE USING (host_id = (SELECT id FROM user_profile WHERE auth_id = auth.uid()));
+    FOR UPDATE USING (host_id = auth.uid());
 
 -- Users can create chatrooms
 CREATE POLICY "Users can create chatrooms" ON chatroom
-    FOR INSERT WITH CHECK (host_id = (SELECT id FROM user_profile WHERE auth_id = auth.uid()));
+    FOR INSERT WITH CHECK (host_id = auth.uid());
 
 -- Users can delete chatrooms they host
 CREATE POLICY "Hosts can delete their chatrooms" ON chatroom
-    FOR DELETE USING (host_id = (SELECT id FROM user_profile WHERE auth_id = auth.uid()));
+    FOR DELETE USING (host_id = auth.uid());
 
 -- RLS policies for chatroom_participants table
 -- Allow all users to view participant information (needed for participant counts)
@@ -61,17 +61,17 @@ CREATE POLICY "Hosts can add participants" ON chatroom_participants
     FOR INSERT WITH CHECK (
         chatroom_id IN (
             SELECT id FROM chatroom 
-            WHERE host_id = (SELECT id FROM user_profile WHERE auth_id = auth.uid())
+            WHERE host_id = auth.uid()
         )
     );
 
 -- Users can remove themselves from chatrooms, hosts can remove any participant
 CREATE POLICY "Users can leave chatrooms or hosts can remove participants" ON chatroom_participants
     FOR DELETE USING (
-        user_id = (SELECT id FROM user_profile WHERE auth_id = auth.uid())
+        user_id = auth.uid()
         OR chatroom_id IN (
             SELECT id FROM chatroom 
-            WHERE host_id = (SELECT id FROM user_profile WHERE auth_id = auth.uid())
+            WHERE host_id = auth.uid()
         )
     );
 

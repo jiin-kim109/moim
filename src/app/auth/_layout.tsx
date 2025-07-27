@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 
-export default function ChatroomLayout() {
+export default function AuthLayout() {
   return (
     <Stack
       screenOptions={{
@@ -8,10 +8,10 @@ export default function ChatroomLayout() {
       }}
     >
       <Stack.Screen 
-        name="[chatroom_id]"
+        name="signin"
       />
       <Stack.Screen 
-        name="create" 
+        name="signup"
       />
     </Stack>
   );

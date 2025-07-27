@@ -1,3 +1,4 @@
+import { ChatMessage } from '@hooks/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const localStorage = {
@@ -31,6 +32,24 @@ export const localStorage = {
       await AsyncStorage.clear();
     } catch (error) {
       console.error('Error clearing localStorage:', error);
+    }
+  },
+
+  async setLastReadMessage(chatroomId: string, message: ChatMessage): Promise<void> {
+    try {
+      await AsyncStorage.setItem(`lastReadMessage_${chatroomId}`, JSON.stringify(message));
+    } catch (error) {
+      console.error('Error setting last read message in localStorage:', error);
+    }
+  },
+
+  async getLastReadMessage(chatroomId: string): Promise<ChatMessage | null> {
+    try {
+      const stored = await AsyncStorage.getItem(`lastReadMessage_${chatroomId}`);
+      return stored ? JSON.parse(stored) : null;
+    } catch (error) {
+      console.error('Error getting last read message from localStorage:', error);
+      return null;
     }
   },
 };

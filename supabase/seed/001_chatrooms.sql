@@ -1,9 +1,9 @@
 -- Insert sample user profiles (without auth users)
-INSERT INTO user_profile (id, username, auth_id) VALUES 
-    ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'soccer_alice', NULL),
-    ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'guitar_bob', NULL),
-    ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'chef_charlie', NULL),
-    ('dddddddd-dddd-dddd-dddd-dddddddddddd', 'yoga_diana', NULL);
+INSERT INTO user_profile (id, username) VALUES 
+    ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'soccer_alice'),
+    ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'guitar_bob'),
+    ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'chef_charlie'),
+    ('dddddddd-dddd-dddd-dddd-dddddddddddd', 'yoga_diana');
 
 -- Insert sample addresses in Greater Toronto Area
 INSERT INTO address (id, place_name, city, state, postal_code, country, longitude, latitude) VALUES 

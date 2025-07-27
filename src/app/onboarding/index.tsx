@@ -201,12 +201,12 @@ export default function OnboardingScreen() {
   const handleSubmit = () => {
     form.handleSubmit(async (data) => {
       const session = await supabase.auth.getSession();
-      const authId = session.data.session?.user.id;
-      if (!authId)
+      const userId = session.data.session?.user.id;
+      if (!userId)
         throw new Error('No authenticated user found');
 
       await updateUser.mutateAsync({
-        authId,
+        userId,
         updateData: {
           username: data.username,
           is_onboarded: true,
@@ -216,7 +216,7 @@ export default function OnboardingScreen() {
       // Update user address
       if (data.location) {
         await updateAddress.mutateAsync({
-          authId,
+          userId,
           addressData: data.location,
         });
       }

@@ -12,7 +12,6 @@ export type Address = {
 export interface UserProfile {
   id: string;
   username: string;
-  auth_id: string | null;
   is_onboarded: boolean;
   address?: Address | null;
 }
@@ -47,4 +46,9 @@ export interface ChatMessage {
   updated_at: string;
   sender: UserProfile;
   sender_nickname: string;
+}
+
+export interface JoinedChatRoom extends ChatRoom {
+  latest_message: ChatMessage | null;
+  unread_count: number;
 }

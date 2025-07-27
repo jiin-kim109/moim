@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { View } from 'react-native';
-import { Globe, MessageCircle, User } from 'lucide-react-native';
+import { Compass, MessageCircle, User } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
@@ -51,7 +51,7 @@ export default function TabLayout() {
               padding: 8,
               backgroundColor: focused ? '#eff6ff' : 'transparent',
             }}>
-              <Globe size={20} color={color} />
+              <Compass size={20} color={color} />
             </View>
           ),
         }}

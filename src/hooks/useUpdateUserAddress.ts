@@ -12,7 +12,7 @@ export type UpdateUserAddressError = {
 };
 
 export const updateUserAddress = async (
-  authId: string,
+  userId: string,
   addressData: Address
 ): Promise<UserProfile> => {
   let oldAddressId: string | null = null;
@@ -21,7 +21,7 @@ export const updateUserAddress = async (
   const { data: currentUser, error: getUserError } = await supabase
     .from('user_profile')
     .select('address_id')
-    .eq('auth_id', authId)
+    .eq('id', userId)
     .single();
 
   if (getUserError) {
@@ -45,7 +45,7 @@ export const updateUserAddress = async (
   const { data: updatedUser, error: userError } = await supabase
     .from('user_profile')
     .update({ address_id: createdAddress.id })
-    .eq('auth_id', authId)
+    .eq('id', userId)
     .select(`
       *,
       address:address_id(*)
@@ -72,10 +72,10 @@ export const updateUserAddress = async (
 };
 
 export function useUpdateUserAddress(
-  mutationOptions?: Partial<UseMutationOptions<UserProfile, UpdateUserAddressError, { authId: string; addressData: Address }>>,
-): UseMutationResult<UserProfile, UpdateUserAddressError, { authId: string; addressData: Address }> {
-  return useMutation<UserProfile, UpdateUserAddressError, { authId: string; addressData: Address }>({
-    mutationFn: ({ authId, addressData }) => updateUserAddress(authId, addressData),
+  mutationOptions?: Partial<UseMutationOptions<UserProfile, UpdateUserAddressError, { userId: string; addressData: Address }>>,
+): UseMutationResult<UserProfile, UpdateUserAddressError, { userId: string; addressData: Address }> {
+  return useMutation<UserProfile, UpdateUserAddressError, { userId: string; addressData: Address }>({
+    mutationFn: ({ userId, addressData }) => updateUserAddress(userId, addressData),
     ...mutationOptions,
   });
 } 

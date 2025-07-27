@@ -66,8 +66,4 @@ export function useGetChatroom(
     enabled: !!chatroomId,
     ...queryOptions,
   });
-} 
-
-export function invalidateChatroomQuery(queryClient: QueryClient, chatroomId: string) {
-  queryClient.invalidateQueries({ queryKey: ["chatroom", chatroomId] });
 }

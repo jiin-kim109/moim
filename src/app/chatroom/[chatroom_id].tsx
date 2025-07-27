@@ -1,91 +1,76 @@
 import React, { useState, useEffect } from 'react';
 import { View, SafeAreaView, TouchableOpacity, ScrollView, FlatList } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, Send } from 'lucide-react-native';
+import { ChevronLeft, Send, MapPin } from 'lucide-react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { Text } from '@components/ui/text';
 import { Input } from '@components/ui/input';
 import { Button } from '@components/ui/button';
 import ChatMessage from '@components/ChatMessage';
-import { invalidateChatroomQuery, useGetChatroom } from '@hooks/useGetChatroom';
-import { useGetChatMessages, invalidateGetChatMessages } from '@hooks/useGetChatMessages';
+import JoinChatroomForm from '@components/JoinChatroomForm';
+import { useGetChatroom } from '@hooks/useGetChatroom';
+import { useGetChatMessages } from '@hooks/useGetChatMessages';
 import { useSendChatMessage } from '@hooks/useSendChatMessage';
-import { useGetUserProfile } from '@hooks/useGetUserProfile';
-import { useJoinChatroom } from '@hooks/useJoinChatroom';
 import { useChatMessageSubscription } from '@hooks/useChatMessageSubscription';
 import { ChatMessage as ChatMessageType } from '@hooks/types';
 import supabase from '@lib/supabase';
+import localStorage from '@lib/localstorage';
 
 export default function ChatroomScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { chatroom_id } = useLocalSearchParams();
   const [message, setMessage] = useState('');
-  const [nickname, setNickname] = useState('');
-  const [chatroomJoinError, setJoinError] = useState<string>('');
-  const [currentAuthId, setCurrentAuthId] = useState<string | null>(null);
-  const queryClient = useQueryClient();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
   const { data: chatroom } = useGetChatroom(chatroom_id as string);
   const { data: messagesData, isLoading: messagesLoading } = useGetChatMessages(chatroom_id as string);
   const sendMessageMutation = useSendChatMessage();
-  const joinChatroomMutation = useJoinChatroom();
   
   // Set up realtime subscription for chat messages
-  const { channelRef, broadcastMessageCreatedEvent } = useChatMessageSubscription(chatroom_id as string);
+  const { broadcastMessageCreatedEvent } = useChatMessageSubscription(chatroom_id as string);
 
-  // Get current user's auth ID
+  // Get current user ID on mount
   useEffect(() => {
     const getCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      setCurrentAuthId(user?.id || null);
+      setCurrentUserId(user?.id || null);
     };
     getCurrentUser();
   }, []);
 
-  const { data: currentUserProfile } = useGetUserProfile(currentAuthId || '', {
-    enabled: !!currentAuthId,
-  });
-
   const currentUserParticipant = chatroom?.participants?.find(
-    participant => participant.user_id === currentUserProfile?.id
+    participant => participant.user_id === currentUserId
   );
 
   const isParticipant = !!currentUserParticipant;
 
-  const handleJoinChatroom = async () => {
-    if (!nickname.trim() || !currentAuthId) return;
-
-    setJoinError('');
-
-    try {
-      await joinChatroomMutation.mutateAsync({
-        chatroom_id: chatroom_id as string,
-        auth_id: currentAuthId,
-        nickname: nickname.trim(),
-      });
-
-      invalidateChatroomQuery(queryClient, chatroom_id as string);
-      invalidateGetChatMessages(queryClient, chatroom_id as string);
-      
-      setNickname('');
-    } catch (error: any) {
-      if (error.isDuplicateNickname) {
-        setJoinError('This nickname is already taken in this chatroom. Please choose another.');
+  // Store last read message ID when entering chatroom or when new messages arrive
+  useEffect(() => {
+    const storeLastReadMessage = async () => {
+      if (!chatroom_id || !isParticipant || !messagesData?.pages?.[0]) {
         return;
       }
-      console.error('Failed to join chatroom with nickname:', error);
-    }
-  };
+
+      const messages = (messagesData.pages[0] as any)?.messages;
+      if (messages && messages.length > 0) {
+        const latestMessage = messages[0];
+        await localStorage.setLastReadMessage(chatroom_id as string, latestMessage);
+      }
+    };
+
+    storeLastReadMessage();
+  }, [chatroom_id, isParticipant, messagesData]);
 
   const handleSend = async () => {
-    if (!message.trim() || !currentUserProfile?.id || !currentAuthId) return;
+    if (!message.trim() || !currentUserId) return;
 
     try {
       // Send message to database
       const newMessage = await sendMessageMutation.mutateAsync({
         chatroom_id: chatroom_id as string,
         message: message.trim(),
-        sender_auth_id: currentAuthId,
+        sender_id: currentUserId,
       });
 
       await broadcastMessageCreatedEvent(newMessage)
@@ -117,6 +102,16 @@ export default function ChatroomScreen() {
               {chatroom?.participant_count || 0}
             </Text>
           </View>
+          
+          {/* Location */}
+          {chatroom?.address && (
+            <View className="flex-row items-center gap-1 my-1">
+              <MapPin size={12} color="#6B7280" />
+              <Text className="text-base text-gray-500">
+                {chatroom.address.place_name || chatroom.address.city}
+              </Text>
+            </View>
+          )}
         </View>
       </View>
 
@@ -124,53 +119,12 @@ export default function ChatroomScreen() {
       <View className="flex-1 bg-orange-50">
         {!isParticipant ? (
           // Show join interface if user is not a participant
-          <View className="flex-1 justify-center items-center p-6">
-            <View className="bg-white rounded-2xl p-6 shadow-lg w-full max-w-sm">
-              <Text className="text-xl font-semibold text-gray-900 text-center mb-2">
-                Set Your Nickname
-              </Text>
-              <Text className="text-gray-600 text-center mb-6">
-                Choose a nickname to use in this chatroom
-              </Text>
-              
-              <View className="mb-4">
-                <Input
-                  value={nickname}
-                  onChangeText={(text) => {
-                    setNickname(text);
-                    // Clear error when user starts typing
-                    if (chatroomJoinError) {
-                      setJoinError('');
-                    }
-                  }}
-                  placeholder="Enter your nickname"
-                  className={`bg-gray-50 border rounded-xl px-4 py-3 text-base ${
-                    chatroomJoinError ? 'border-red-500' : 'border-gray-200'
-                  }`}
-                  maxLength={20}
-                />
-                {chatroomJoinError && (
-                  <Text className="text-red-500 text-sm mt-2 px-1">
-                    {chatroomJoinError}
-                  </Text>
-                )}
-              </View>
-              
-              <Button
-                onPress={handleJoinChatroom}
-                disabled={!nickname.trim() || joinChatroomMutation.isPending}
-                className={`w-full py-3 rounded-xl ${
-                  nickname.trim() && !joinChatroomMutation.isPending
-                    ? 'bg-orange-500' 
-                    : 'bg-gray-300'
-                }`}
-              >
-                <Text className="text-white font-semibold text-base">
-                  Set Nickname
-                </Text>
-              </Button>
-            </View>
-          </View>
+          currentUserId ? (
+            <JoinChatroomForm
+              chatroomId={chatroom_id as string}
+              userId={currentUserId}
+            />
+          ) : null
         ) : !messagesLoading && (messagesData?.pages?.[0] as any)?.messages?.length > 0 ? (
           <FlatList
             data={(messagesData.pages[0] as any).messages}
@@ -178,7 +132,7 @@ export default function ChatroomScreen() {
             renderItem={({ item }: { item: ChatMessageType }) => (
               <ChatMessage 
                 message={item} 
-                isCurrentUser={item.sender_id === currentUserProfile?.id}
+                isCurrentUser={item.sender_id === currentUserId}
               />
             )}
             contentContainerStyle={{ 

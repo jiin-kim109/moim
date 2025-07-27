@@ -1,15 +1,11 @@
 -- Create user_profile table
 CREATE TABLE user_profile (
-    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    id UUID PRIMARY KEY,
     username TEXT,
-    auth_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     is_onboarded BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-
--- Create unique index on auth_id to ensure one profile per user
-CREATE UNIQUE INDEX user_profile_auth_id_key ON user_profile(auth_id);
 
 -- Create unique index on username (allows multiple NULLs but ensures unique non-NULL values)
 CREATE UNIQUE INDEX user_profile_username_key ON user_profile(username) WHERE username IS NOT NULL;
@@ -20,17 +16,17 @@ ALTER TABLE user_profile ENABLE ROW LEVEL SECURITY;
 -- Create RLS policies
 -- Users can only view their own profile
 CREATE POLICY "Users can view own profile" ON user_profile
-    FOR SELECT USING (auth.uid() = auth_id);
+    FOR SELECT USING (auth.uid() = id);
 
 -- Users can update their own profile
 CREATE POLICY "Users can update own profile" ON user_profile
-    FOR UPDATE USING (auth.uid() = auth_id);
+    FOR UPDATE USING (auth.uid() = id);
 
 -- Function to handle new user profile creation
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.user_profile (auth_id)
+    INSERT INTO public.user_profile (id)
     VALUES (NEW.id);
     RETURN NEW;
 END;

@@ -2,7 +2,7 @@
 CREATE TABLE chat_messages (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     chatroom_id TEXT NOT NULL REFERENCES chatroom(id) ON DELETE CASCADE,
-    sender_id TEXT NOT NULL REFERENCES user_profile(id) ON DELETE CASCADE,
+    sender_id UUID NOT NULL REFERENCES user_profile(id) ON DELETE CASCADE,
     message TEXT NOT NULL,
     is_deleted BOOLEAN DEFAULT FALSE,
     is_edited BOOLEAN DEFAULT FALSE,
@@ -27,24 +27,24 @@ CREATE POLICY "Participants can view chatroom messages" ON chat_messages
     FOR SELECT USING (
         chatroom_id IN (
             SELECT chatroom_id FROM chatroom_participants 
-            WHERE user_id = (SELECT id FROM user_profile WHERE auth_id = auth.uid())
+            WHERE user_id = auth.uid()
         )
     );
 
 -- Only chatroom participants can send messages to that chatroom
 CREATE POLICY "Participants can send messages" ON chat_messages
     FOR INSERT WITH CHECK (
-        sender_id = (SELECT id FROM user_profile WHERE auth_id = auth.uid())
+        sender_id = auth.uid()
         AND chatroom_id IN (
             SELECT chatroom_id FROM chatroom_participants 
-            WHERE user_id = (SELECT id FROM user_profile WHERE auth_id = auth.uid())
+            WHERE user_id = auth.uid()
         )
     );
 
 -- Only message senders can update their own messages
 CREATE POLICY "Senders can update their messages" ON chat_messages
     FOR UPDATE USING (
-        sender_id = (SELECT id FROM user_profile WHERE auth_id = auth.uid())
+        sender_id = auth.uid()
     );
 
 

@@ -38,7 +38,7 @@ CREATE POLICY "Users can update their addresses" ON address
     FOR UPDATE USING (
         id IN (
             SELECT address_id FROM user_profile 
-            WHERE auth_id = auth.uid() AND address_id IS NOT NULL
+            WHERE id = auth.uid() AND address_id IS NOT NULL
         )
     );
 
@@ -47,7 +47,7 @@ CREATE POLICY "Users can delete their addresses" ON address
     FOR DELETE USING (
         id IN (
             SELECT address_id FROM user_profile 
-            WHERE auth_id = auth.uid() AND address_id IS NOT NULL
+            WHERE id = auth.uid() AND address_id IS NOT NULL
         )
     );
 

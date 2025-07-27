@@ -31,10 +31,7 @@ export const fetchChatMessages = async (
     .select(`
       *,
       chatroom!inner(
-        chatroom_participants!inner(
-          user_id,
-          nickname
-        )
+        chatroom_participants!inner(*)
       )
     `)
     .eq('chatroom_id', chatroomId)
@@ -91,7 +88,3 @@ export function useGetChatMessages(
     ...queryOptions,
   });
 }
-
-export function invalidateGetChatMessages(queryClient: QueryClient, chatroomId: string) {
-  queryClient.invalidateQueries({ queryKey: ["chatMessages", chatroomId] });
-} 

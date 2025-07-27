@@ -6,12 +6,12 @@ import { useGetPublicChatrooms } from '../hooks/useGetPublicChatrooms';
 import { ChatRoom } from '../hooks/types';
 import ChatRoomDetail from './ChatRoomDetail';
 
-interface ChatRoomListItemProps {
+interface OpenChatRoomListItemProps {
   chatRoom: ChatRoom;
   onPress?: (chatRoom: ChatRoom) => void;
 }
 
-function ChatRoomListItem({ chatRoom, onPress }: ChatRoomListItemProps) {
+function OpenChatRoomListItem({ chatRoom, onPress }: OpenChatRoomListItemProps) {
   const handlePress = () => {
     onPress?.(chatRoom);
   };
@@ -57,12 +57,12 @@ function ChatRoomListItem({ chatRoom, onPress }: ChatRoomListItemProps) {
   );
 }
 
-interface ChatRoomListProps {
+interface OpenChatRoomListProps {
   onChatRoomPress?: (chatRoom: ChatRoom) => void;
   onChatRoomJoin?: (chatRoom: ChatRoom) => void;
 }
 
-export default function ChatRoomList({ onChatRoomPress, onChatRoomJoin }: ChatRoomListProps) {
+export default function OpenChatRoomList({ onChatRoomPress, onChatRoomJoin }: OpenChatRoomListProps) {
   const { data: chatRooms, isLoading, error, refetch } = useGetPublicChatrooms();
   const [selectedChatRoom, setSelectedChatRoom] = useState<ChatRoom | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
@@ -90,7 +90,7 @@ export default function ChatRoomList({ onChatRoomPress, onChatRoomJoin }: ChatRo
   };
 
   const renderChatRoomItem = ({ item }: { item: ChatRoom }) => (
-    <ChatRoomListItem chatRoom={item} onPress={handleChatRoomPress} />
+    <OpenChatRoomListItem chatRoom={item} onPress={handleChatRoomPress} />
   );
 
   const renderEmptyState = () => (

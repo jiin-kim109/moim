@@ -6,7 +6,7 @@ import {
 import supabase from '../lib/supabase';
 import { UserProfile } from './types';
 
-type UpdateUserProfileData = Partial<Omit<UserProfile, 'id' | 'auth_id' | 'address'>>;
+type UpdateUserProfileData = Partial<Omit<UserProfile, 'id' | 'address'>>;
 
 export type UpdateUserError = {
   message: string;
@@ -14,13 +14,13 @@ export type UpdateUserError = {
 };
 
 export const updateUserProfile = async (
-  authId: string,
+  userId: string,
   updateData: UpdateUserProfileData
 ): Promise<UserProfile> => {
   const { data, error } = await supabase
     .from('user_profile')
     .update(updateData)
-    .eq('auth_id', authId)
+    .eq('id', userId)
     .select(`
       *
     `)
@@ -34,10 +34,10 @@ export const updateUserProfile = async (
 };
 
 export function useUpdateUser(
-  mutationOptions?: Partial<UseMutationOptions<UserProfile, UpdateUserError, { authId: string; updateData: UpdateUserProfileData }>>,
-): UseMutationResult<UserProfile, UpdateUserError, { authId: string; updateData: UpdateUserProfileData }> {
-  return useMutation<UserProfile, UpdateUserError, { authId: string; updateData: UpdateUserProfileData }>({
-    mutationFn: ({ authId, updateData }) => updateUserProfile(authId, updateData),
+  mutationOptions?: Partial<UseMutationOptions<UserProfile, UpdateUserError, { userId: string; updateData: UpdateUserProfileData }>>,
+): UseMutationResult<UserProfile, UpdateUserError, { userId: string; updateData: UpdateUserProfileData }> {
+  return useMutation<UserProfile, UpdateUserError, { userId: string; updateData: UpdateUserProfileData }>({
+    mutationFn: ({ userId, updateData }) => updateUserProfile(userId, updateData),
     ...mutationOptions,
   });
 } 

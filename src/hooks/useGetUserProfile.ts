@@ -11,8 +11,8 @@ export type UserProfileError = {
   code?: string;
 };
 
-export const fetchUserProfile = async (auth_id: string | null): Promise<UserProfile | null> => {
-  if (!auth_id) {
+export const fetchUserProfile = async (userId: string | null): Promise<UserProfile | null> => {
+  if (!userId) {
     return null;
   }
 
@@ -21,11 +21,10 @@ export const fetchUserProfile = async (auth_id: string | null): Promise<UserProf
     .select(`
       id,
       username,
-      auth_id,
       is_onboarded,
       address:address_id(*)
     `)
-    .eq('auth_id', auth_id)
+    .eq('id', userId)
     .single();
 
   if (error) {
@@ -36,12 +35,12 @@ export const fetchUserProfile = async (auth_id: string | null): Promise<UserProf
 };
 
 export function useGetUserProfile(
-  auth_id: string,
+  userId: string,
   queryOptions?: Partial<UseQueryOptions<UserProfile | null, UserProfileError>>,
 ): UseQueryResult<UserProfile | null, UserProfileError> {
   return useQuery<UserProfile | null, UserProfileError>({
-    queryKey: ["userProfile", auth_id],
-    queryFn: () => fetchUserProfile(auth_id),
+    queryKey: ["userProfile", userId],
+    queryFn: () => fetchUserProfile(userId),
     ...queryOptions,
   });
 } 

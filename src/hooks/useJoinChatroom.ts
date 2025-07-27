@@ -2,6 +2,7 @@ import {
   useMutation,
   UseMutationOptions,
   UseMutationResult,
+  useQueryClient,
 } from "@tanstack/react-query";
 import supabase from '../lib/supabase';
 
@@ -13,7 +14,7 @@ export type JoinChatroomError = {
 
 export type JoinChatroomData = {
   chatroom_id: string;
-  auth_id: string;
+  user_id: string;
   nickname: string;
 };
 
@@ -28,22 +29,12 @@ export type JoinChatroomResult = {
 export const joinChatroom = async (
   data: JoinChatroomData
 ): Promise<JoinChatroomResult> => {
-  const { data: userProfile, error: profileError } = await supabase
-    .from('user_profile')
-    .select('id')
-    .eq('auth_id', data.auth_id)
-    .single();
-
-  if (profileError) {
-    throw new Error(`Failed to get user profile: ${profileError.message}`);
-  }
-
   // Check if user is already a participant
   const { data: existingParticipant, error: checkError } = await supabase
     .from('chatroom_participants')
     .select('id')
     .eq('chatroom_id', data.chatroom_id)
-    .eq('user_id', userProfile.id)
+    .eq('user_id', data.user_id)
     .maybeSingle();
 
   if (checkError) {
@@ -60,7 +51,7 @@ export const joinChatroom = async (
     .from('chatroom_participants')
     .insert({
       chatroom_id: data.chatroom_id,
-      user_id: userProfile.id,
+      user_id: data.user_id,
       nickname: data.nickname || null,
     })
     .select('*')
@@ -83,8 +74,14 @@ export const joinChatroom = async (
 export function useJoinChatroom(
   mutationOptions?: Partial<UseMutationOptions<JoinChatroomResult, JoinChatroomError, JoinChatroomData>>,
 ): UseMutationResult<JoinChatroomResult, JoinChatroomError, JoinChatroomData> {
+  const queryClient = useQueryClient();
   return useMutation<JoinChatroomResult, JoinChatroomError, JoinChatroomData>({
     mutationFn: joinChatroom,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["chatroom", data.chatroom_id] });
+      queryClient.invalidateQueries({ queryKey: ["chatMessages", data.chatroom_id] });
+      queryClient.invalidateQueries({ queryKey: ['joinedChatrooms', data.user_id] });
+    },
     ...mutationOptions,
   });
 } 
