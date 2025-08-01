@@ -2,54 +2,49 @@ import React from 'react';
 import { FlatList, View, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { Text } from './ui/text';
 import { Badge } from './ui/badge';
-import { useGetJoinedChatrooms, useJoinedChatroomsSubscription } from '../hooks/useGetJoinedChatrooms';
-import { JoinedChatRoom } from '../hooks/types';
+import { ChatRoom } from '../hooks/types';
+import { formatTimeForChatRoomList } from '../lib/utils';
+import { useGetJoinedChatrooms } from '../hooks/chats/useGetJoinedChatrooms';
+import { useGetUnreadCount } from '../hooks/chats/useGetUnreadCount';
+import { useGetChatMessages } from '../hooks/chats/useGetChatMessages';
 
-interface JoinedChatRoomListItemProps {
-  chatRoom: JoinedChatRoom;
-  onPress?: (chatRoom: JoinedChatRoom) => void;
+interface JoinedChatroomItem {
+  chatroom: ChatRoom;
+  lastMessage: string;
+  unread_count: number;
 }
 
-function JoinedChatRoomListItem({ chatRoom, onPress }: JoinedChatRoomListItemProps) {
+interface JoinedChatRoomListItemProps {
+  chatRoom: ChatRoom;
+  userId: string;
+  onPress?: (chatRoom: JoinedChatroomItem) => void;
+}
+
+function JoinedChatRoomListItem({ chatRoom, userId, onPress }: JoinedChatRoomListItemProps) {
+  const { data: messagesData } = useGetChatMessages(chatRoom.id, {
+    enabled: !!chatRoom.id,
+  });
+  
+  const { data: unreadCount = 0 } = useGetUnreadCount(chatRoom.id, userId, {
+    enabled: !!chatRoom.id,
+  });
+
+  const latestMessage = (messagesData as any)?.pages?.[0]?.messages?.[0];
+
+  const chatroomItem: JoinedChatroomItem = {
+    chatroom: chatRoom,
+    lastMessage: latestMessage?.message || '',
+    unread_count: unreadCount,
+  };
+
   const handlePress = () => {
-    onPress?.(chatRoom);
+    onPress?.(chatroomItem);
   };
-
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const daysDiff = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-    if (daysDiff === 0) {
-      // Today - show time
-      return date.toLocaleTimeString('en-US', { 
-        hour: 'numeric', 
-        minute: '2-digit',
-        hour12: true 
-      });
-    } else if (daysDiff === 1) {
-      // Yesterday
-      return 'Yesterday';
-    } else if (daysDiff < 7) {
-      // This week - show day name
-      return date.toLocaleDateString('en-US', { weekday: 'short' });
-    } else {
-      // More than a week - show date
-      return date.toLocaleDateString('en-US', { 
-        month: 'numeric', 
-        day: 'numeric' 
-      });
-    }
-  };
-
-  const participantText = `${chatRoom.participant_count || 0}`;
-
   return (
-    <TouchableOpacity onPress={handlePress} className="flex-row p-6 bg-white">
+    <TouchableOpacity onPress={handlePress} className="flex-row p-5 bg-white">
       {/* Thumbnail */}
       <Image 
-        source={chatRoom.thumbnail_url ? { uri: chatRoom.thumbnail_url } : require('@assets/chatroom-default.png')}
+        source={chatroomItem.chatroom.thumbnail_url ? { uri: chatroomItem.chatroom.thumbnail_url } : require('@assets/chatroom-thumbnail-default.png')}
         className="w-16 h-16 rounded-3xl mr-4 flex-shrink-0"
         resizeMode="cover"
       />
@@ -60,16 +55,16 @@ function JoinedChatRoomListItem({ chatRoom, onPress }: JoinedChatRoomListItemPro
         <View className="flex-row items-center justify-between mb-1">
           <View className="flex-row items-center flex-1">
             <Text className="text-lg font-medium text-gray-900" numberOfLines={1}>
-              {chatRoom.title}
+              {chatroomItem.chatroom.title.length > 25 ? `${chatroomItem.chatroom.title.substring(0, 25)}...` : chatroomItem.chatroom.title}
             </Text>
             <Text className="text-base text-gray-500 ml-3">
-              {participantText}
+              {chatroomItem.chatroom.participant_count}
             </Text>
           </View>
           {/* Timestamp */}
-          {chatRoom.latest_message && (
+          {chatroomItem.lastMessage && (
             <Text className="text-md text-gray-400 ml-2">
-              {formatTime(chatRoom.latest_message.created_at)}
+              {formatTimeForChatRoomList(chatroomItem.chatroom.created_at)}
             </Text>
           )}
         </View>
@@ -77,16 +72,16 @@ function JoinedChatRoomListItem({ chatRoom, onPress }: JoinedChatRoomListItemPro
         {/* Bottom row: Latest message and unread count */}
         <View className="flex-row items-center justify-between">
           <Text className="text-md text-gray-500 flex-1 mr-2" numberOfLines={1}>
-            {chatRoom.latest_message?.message || 'No messages yet'}
+            {chatroomItem.lastMessage || 'No messages yet'}
           </Text>
           {/* Unread count badge */}
-          {chatRoom.unread_count > 0 && (
+          {chatroomItem.unread_count > 0 && (
             <Badge 
               variant="destructive" 
               className="bg-red-500 min-w-5 h-5 rounded-full px-1.5 py-0"
             >
               <Text className="text-xs text-white font-medium">
-                {chatRoom.unread_count > 99 ? '99+' : chatRoom.unread_count}
+                {chatroomItem.unread_count > 99 ? '99+' : chatroomItem.unread_count}
               </Text>
             </Badge>
           )}
@@ -98,22 +93,18 @@ function JoinedChatRoomListItem({ chatRoom, onPress }: JoinedChatRoomListItemPro
 
 interface JoinedChatRoomListProps {
   userId: string;
-  onChatRoomPress?: (chatRoom: JoinedChatRoom) => void;
+  onChatRoomPress?: (chatRoom: JoinedChatroomItem) => void;
 }
 
 export default function JoinedChatRoomList({ userId, onChatRoomPress }: JoinedChatRoomListProps) {
-  const { data: chatRooms, isLoading, error, refetch } = useGetJoinedChatrooms(userId, {
-    retry: 3,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 15000),
-  });
-  useJoinedChatroomsSubscription(userId);
+  const { data: joinedChatrooms, isLoading, refetch } = useGetJoinedChatrooms(userId);
 
-  const handleChatRoomPress = (chatRoom: JoinedChatRoom) => {
+  const handleChatRoomPress = (chatRoom: JoinedChatroomItem) => {
     onChatRoomPress?.(chatRoom);
   };
 
-  const renderChatRoomItem = ({ item }: { item: JoinedChatRoom }) => (
-    <JoinedChatRoomListItem chatRoom={item} onPress={handleChatRoomPress} />
+  const renderChatRoomItem = ({ item }: { item: ChatRoom }) => (
+    <JoinedChatRoomListItem chatRoom={item} userId={userId} onPress={handleChatRoomPress} />
   );
 
   const renderEmptyState = () => (
@@ -122,7 +113,7 @@ export default function JoinedChatRoomList({ userId, onChatRoomPress }: JoinedCh
         No chat rooms joined yet
       </Text>
       <Text className="text-sm text-gray-400 text-center mt-2">
-        Join some chat rooms to start conversations
+        Join chat rooms to start conversations
       </Text>
     </View>
   );
@@ -134,14 +125,14 @@ export default function JoinedChatRoomList({ userId, onChatRoomPress }: JoinedCh
     </View>
   );
 
-  if (isLoading || error) {
+  if (isLoading) {
     return renderLoadingState();
   }
 
   return (
     <View className="flex-1 bg-white">
       <FlatList
-        data={chatRooms}
+        data={joinedChatrooms || []}
         renderItem={renderChatRoomItem}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}

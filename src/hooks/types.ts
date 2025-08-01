@@ -12,6 +12,7 @@ export type Address = {
 export interface UserProfile {
   id: string;
   username: string;
+  profile_image_url?: string | null;
   is_onboarded: boolean;
   address?: Address | null;
 }
@@ -25,14 +26,13 @@ export interface ChatRoomParticipant {
 export interface ChatRoom {
   id: string;
   title: string;
+  host_id: string;
   description: string | null;
   thumbnail_url: string | null;
   max_participants: number | null;
   created_at: string;
-  host: UserProfile | null;
   participant_count: number;
   address: Address | null;
-  participants: ChatRoomParticipant[];
 }
 
 export interface ChatMessage {
@@ -40,6 +40,7 @@ export interface ChatMessage {
   chatroom_id: string;
   sender_id: string;
   message: string;
+  message_type: 'user_message' | 'system_message';
   is_deleted: boolean;
   is_edited: boolean;
   created_at: string;
@@ -48,7 +49,3 @@ export interface ChatMessage {
   sender_nickname: string;
 }
 
-export interface JoinedChatRoom extends ChatRoom {
-  latest_message: ChatMessage | null;
-  unread_count: number;
-}

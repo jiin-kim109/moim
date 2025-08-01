@@ -3,7 +3,7 @@ import {
   UseMutationOptions,
   UseMutationResult,
 } from "@tanstack/react-query";
-import supabase from '../lib/supabase';
+import supabase from '../../lib/supabase';
 
 export type UpdateNicknameError = {
   message: string;

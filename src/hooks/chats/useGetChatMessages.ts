@@ -2,8 +2,8 @@ import {
   useInfiniteQuery,
   QueryClient,
 } from "@tanstack/react-query";
-import supabase from '../lib/supabase';
-import { ChatMessage } from './types';
+import supabase from '../../lib/supabase';
+import { ChatMessage } from '../types';
 
 export type GetChatMessagesError = {
   message: string;

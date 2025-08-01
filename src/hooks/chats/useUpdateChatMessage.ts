@@ -3,8 +3,8 @@ import {
   UseMutationOptions,
   UseMutationResult,
 } from "@tanstack/react-query";
-import supabase from '../lib/supabase';
-import { ChatMessage } from './types';
+import supabase from '../../lib/supabase';
+import { ChatMessage } from '../types';
 
 export type UpdateChatMessageError = {
   message: string;

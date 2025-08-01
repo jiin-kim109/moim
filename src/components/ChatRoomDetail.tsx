@@ -54,7 +54,7 @@ export default function ChatRoomDetail({
 
           {/* Thumbnail background section */}
           <ImageBackground
-            source={chatRoom.thumbnail_url ? { uri: chatRoom.thumbnail_url } : require('@assets/chatroom-default.png')}
+            source={chatRoom.thumbnail_url ? { uri: chatRoom.thumbnail_url } : require('@assets/chatroom-thumbnail-default.png')}
             className="h-96 justify-end"
             resizeMode="cover"
           >

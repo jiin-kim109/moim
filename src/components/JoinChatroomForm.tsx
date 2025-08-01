@@ -13,7 +13,7 @@ import {
   FormItem,
   FormMessage,
 } from '@components/ui/form';
-import { useJoinChatroom } from '@hooks/useJoinChatroom';
+import { useJoinChatroom } from '@hooks/chats/useJoinChatroom';
 
 // Form schema for joining chatroom
 const joinChatroomSchema = z.object({

@@ -1,34 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { View, SafeAreaView, TouchableOpacity, ScrollView, FlatList } from 'react-native';
+import { View, SafeAreaView, TouchableOpacity, FlatList } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Send, MapPin } from 'lucide-react-native';
-import { useQueryClient } from '@tanstack/react-query';
 import { Text } from '@components/ui/text';
 import { Input } from '@components/ui/input';
 import { Button } from '@components/ui/button';
 import ChatMessage from '@components/ChatMessage';
 import JoinChatroomForm from '@components/JoinChatroomForm';
-import { useGetChatroom } from '@hooks/useGetChatroom';
-import { useGetChatMessages } from '@hooks/useGetChatMessages';
-import { useSendChatMessage } from '@hooks/useSendChatMessage';
-import { useChatMessageSubscription } from '@hooks/useChatMessageSubscription';
+import { useGetChatroom } from '@hooks/chats/useGetChatroom';
+import { useGetChatMessages } from '@hooks/chats/useGetChatMessages';
+import { useGetChatroomParticipants } from '@hooks/chats/useGetChatroomParticipants';
+import { useSendChatMessage } from '@hooks/chats/useSendChatMessage';
+import { useSaveLastReadMessage } from '@hooks/chats/useLastReadMessage';
 import { ChatMessage as ChatMessageType } from '@hooks/types';
 import supabase from '@lib/supabase';
-import localStorage from '@lib/localstorage';
 
 export default function ChatroomScreen() {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const { chatroom_id } = useLocalSearchParams();
   const [message, setMessage] = useState('');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
   const { data: chatroom } = useGetChatroom(chatroom_id as string);
-  const { data: messagesData, isLoading: messagesLoading } = useGetChatMessages(chatroom_id as string);
+  const { data: participants, isLoading: participantsLoading } = useGetChatroomParticipants(chatroom_id as string);
+  const { data: messagesData } = useGetChatMessages(chatroom_id as string);
   const sendMessageMutation = useSendChatMessage();
-  
-  // Set up realtime subscription for chat messages
-  const { broadcastMessageCreatedEvent } = useChatMessageSubscription(chatroom_id as string);
+  const saveLastReadMessageMutation = useSaveLastReadMessage();
 
   // Get current user ID on mount
   useEffect(() => {
@@ -39,46 +36,81 @@ export default function ChatroomScreen() {
     getCurrentUser();
   }, []);
 
-  const currentUserParticipant = chatroom?.participants?.find(
-    participant => participant.user_id === currentUserId
+  const isParticipant = participants?.find(
+    (participant) => participant.user_id === currentUserId
   );
 
-  const isParticipant = !!currentUserParticipant;
-
-  // Store last read message ID when entering chatroom or when new messages arrive
+  // Store last read message when entering chatroom or when new messages arrive
   useEffect(() => {
-    const storeLastReadMessage = async () => {
-      if (!chatroom_id || !isParticipant || !messagesData?.pages?.[0]) {
-        return;
-      }
+    if (!chatroom_id || !isParticipant || !messagesData?.pages?.[0]) {
+      return;
+    }
 
-      const messages = (messagesData.pages[0] as any)?.messages;
-      if (messages && messages.length > 0) {
-        const latestMessage = messages[0];
-        await localStorage.setLastReadMessage(chatroom_id as string, latestMessage);
-      }
-    };
-
-    storeLastReadMessage();
-  }, [chatroom_id, isParticipant, messagesData]);
+    const messages = (messagesData.pages[0] as any)?.messages;
+    if (messages && messages.length > 0) {
+      const latestMessage = messages[0];
+      saveLastReadMessageMutation.mutate({
+        chatroomId: chatroom_id as string,
+        message: latestMessage,
+      });
+    }
+  }, [chatroom_id, isParticipant, messagesData, saveLastReadMessageMutation]);
 
   const handleSend = async () => {
     if (!message.trim() || !currentUserId) return;
 
     try {
       // Send message to database
-      const newMessage = await sendMessageMutation.mutateAsync({
+      await sendMessageMutation.mutateAsync({
         chatroom_id: chatroom_id as string,
         message: message.trim(),
         sender_id: currentUserId,
       });
 
-      await broadcastMessageCreatedEvent(newMessage)
-
       setMessage('');
     } catch (error) {
       console.error('Failed to send message:', error);
     }
+  };
+
+  const renderChatContent = () => {
+    if (currentUserId && !participantsLoading && !isParticipant) {
+      return (
+        <JoinChatroomForm
+          chatroomId={chatroom_id as string}
+          userId={currentUserId as string}
+        />
+      );
+    }
+
+    const messages = (messagesData?.pages?.[0] as any)?.messages || [];
+
+    return (
+      <FlatList
+        data={messages}
+        keyExtractor={(item: ChatMessageType) => item.id}
+        renderItem={({ item }: { item: ChatMessageType }) => (
+          <ChatMessage 
+            message={item} 
+            isCurrentUser={item.sender_id === currentUserId}
+          />
+        )}
+        contentContainerStyle={{ 
+          padding: 16,
+          flexGrow: 1,
+          justifyContent: 'flex-end'
+        }}
+        inverted
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View className="flex-1 justify-end p-4">
+            <Text className="text-center text-gray-500 mb-4">
+              No messages yet. Start the conversation!
+            </Text>
+          </View>
+        }
+      />
+    );
   };
 
   return (
@@ -105,7 +137,7 @@ export default function ChatroomScreen() {
           
           {/* Location */}
           {chatroom?.address && (
-            <View className="flex-row items-center gap-1 my-1">
+            <View className="flex-row items-center gap-1 mb-1">
               <MapPin size={12} color="#6B7280" />
               <Text className="text-base text-gray-500">
                 {chatroom.address.place_name || chatroom.address.city}
@@ -117,37 +149,7 @@ export default function ChatroomScreen() {
 
       {/* Chat Messages Area */}
       <View className="flex-1 bg-orange-50">
-        {!isParticipant ? (
-          // Show join interface if user is not a participant
-          currentUserId ? (
-            <JoinChatroomForm
-              chatroomId={chatroom_id as string}
-              userId={currentUserId}
-            />
-          ) : null
-        ) : !messagesLoading && (messagesData?.pages?.[0] as any)?.messages?.length > 0 ? (
-          <FlatList
-            data={(messagesData.pages[0] as any).messages}
-            keyExtractor={(item: ChatMessageType) => item.id}
-            renderItem={({ item }: { item: ChatMessageType }) => (
-              <ChatMessage 
-                message={item} 
-                isCurrentUser={item.sender_id === currentUserId}
-              />
-            )}
-            contentContainerStyle={{ 
-              padding: 16,
-              flexGrow: 1,
-              justifyContent: 'flex-end'
-            }}
-            inverted
-            showsVerticalScrollIndicator={false}
-          />
-        ) : (
-          <View className="flex-1 justify-end p-4">
-            <Text className="text-center text-gray-500 mb-4">No messages yet. Start the conversation!</Text>
-          </View>
-        )}
+        {renderChatContent()}
       </View>
       </SafeAreaView>
       
@@ -160,7 +162,7 @@ export default function ChatroomScreen() {
               onChangeText={setMessage}
               placeholder="Type a message..."
               multiline
-              editable={isParticipant}
+              editable={!!isParticipant}
               className="bg-gray-100 border-0 rounded-2xl px-4 py-3 min-h-12 max-h-32 text-base"
               style={{
                 textAlignVertical: 'center',

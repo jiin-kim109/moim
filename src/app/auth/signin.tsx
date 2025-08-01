@@ -45,16 +45,6 @@ export default function SignInScreen() {
     },
   });
 
-  const handlePostAuthNavigation = async (userId: string) => {
-    const userProfile = await fetchUserProfile(userId);
-    
-    if (userProfile && !userProfile.is_onboarded) {
-      router.replace('/onboarding');
-    } else {
-      router.replace('/main');
-    }
-  };
-
   const handleEmailSignIn = async (values: SignInFormValues) => {
     try {
       setLoading(true);
@@ -69,11 +59,8 @@ export default function SignInScreen() {
         setAuthError(error.message);
         return;
       }
-
-      if (data.user) {
-        handlePostAuthNavigation(data.user.id);
-      }
       
+      router.replace('/');
     } catch (error) {
       console.error('Email sign-in error:', error);
       setAuthError('An unexpected error occurred');

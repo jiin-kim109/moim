@@ -2,6 +2,7 @@
 CREATE TABLE user_profile (
     id UUID PRIMARY KEY,
     username TEXT,
+    profile_image_url TEXT,
     is_onboarded BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

@@ -15,7 +15,7 @@ CREATE TABLE chatroom_participants (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     chatroom_id TEXT NOT NULL REFERENCES chatroom(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES user_profile(id) ON DELETE CASCADE,
-    nickname TEXT,
+    nickname TEXT NOT NULL,
     joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(chatroom_id, user_id)
 );
@@ -25,10 +25,9 @@ CREATE INDEX chatroom_host_id_idx ON chatroom(host_id);
 CREATE INDEX chatroom_participants_chatroom_id_idx ON chatroom_participants(chatroom_id);
 CREATE INDEX chatroom_participants_user_id_idx ON chatroom_participants(user_id);
 
--- Create unique index for nicknames within each chatroom (allows multiple NULLs but ensures unique non-NULL values)
+-- Create unique index for nicknames within each chatroom
 CREATE UNIQUE INDEX chatroom_participants_unique_nickname_per_room 
-ON chatroom_participants(chatroom_id, nickname) 
-WHERE nickname IS NOT NULL;
+ON chatroom_participants(chatroom_id, nickname);
 
 -- Enable Row Level Security
 ALTER TABLE chatroom ENABLE ROW LEVEL SECURITY;
@@ -84,8 +83,8 @@ CREATE TRIGGER update_chatroom_updated_at
 CREATE OR REPLACE FUNCTION public.add_host_as_participant()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.chatroom_participants (chatroom_id, user_id)
-    VALUES (NEW.id, NEW.host_id);
+    INSERT INTO public.chatroom_participants (chatroom_id, user_id, nickname)
+    VALUES (NEW.id, NEW.host_id, 'Host');
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

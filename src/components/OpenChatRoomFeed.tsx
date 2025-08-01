@@ -2,16 +2,16 @@ import React, { useState } from 'react';
 import { FlatList, View, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { Text } from './ui/text';
 import { User, MapPin } from 'lucide-react-native';
-import { useGetPublicChatrooms } from '../hooks/useGetPublicChatrooms';
 import { ChatRoom } from '../hooks/types';
 import ChatRoomDetail from './ChatRoomDetail';
+import { useGetRecommendedChatrooms } from '../hooks/chats/useGetRecommendedChatrooms';
 
-interface OpenChatRoomListItemProps {
+interface OpenChatRoomFeedItemProps {
   chatRoom: ChatRoom;
   onPress?: (chatRoom: ChatRoom) => void;
 }
 
-function OpenChatRoomListItem({ chatRoom, onPress }: OpenChatRoomListItemProps) {
+function OpenChatRoomFeedItem({ chatRoom, onPress }: OpenChatRoomFeedItemProps) {
   const handlePress = () => {
     onPress?.(chatRoom);
   };
@@ -24,7 +24,7 @@ function OpenChatRoomListItem({ chatRoom, onPress }: OpenChatRoomListItemProps) 
     <TouchableOpacity onPress={handlePress} className="flex-row p-4 border-b border-gray-100">
       {/* Thumbnail */}
       <Image 
-        source={chatRoom.thumbnail_url ? { uri: chatRoom.thumbnail_url } : require('@assets/chatroom-default.png')}
+        source={chatRoom.thumbnail_url ? { uri: chatRoom.thumbnail_url } : require('@assets/chatroom-thumbnail-default.png')}
         className="w-24 h-24 pt-1 pl-1 pr-4 pb-5 rounded-3xl ml-1 mr-2 flex-shrink-0"
         resizeMode="cover"
       />
@@ -57,13 +57,16 @@ function OpenChatRoomListItem({ chatRoom, onPress }: OpenChatRoomListItemProps) 
   );
 }
 
-interface OpenChatRoomListProps {
+interface OpenChatRoomFeedProps {
   onChatRoomPress?: (chatRoom: ChatRoom) => void;
   onChatRoomJoin?: (chatRoom: ChatRoom) => void;
 }
 
-export default function OpenChatRoomList({ onChatRoomPress, onChatRoomJoin }: OpenChatRoomListProps) {
-  const { data: chatRooms, isLoading, error, refetch } = useGetPublicChatrooms();
+export default function OpenChatRoomFeed({ onChatRoomPress, onChatRoomJoin }: OpenChatRoomFeedProps) {
+  const { data: chatRooms, isLoading, refetch } = useGetRecommendedChatrooms({
+    retry: true,
+    retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 15000),
+  });
   const [selectedChatRoom, setSelectedChatRoom] = useState<ChatRoom | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
 
@@ -90,7 +93,7 @@ export default function OpenChatRoomList({ onChatRoomPress, onChatRoomJoin }: Op
   };
 
   const renderChatRoomItem = ({ item }: { item: ChatRoom }) => (
-    <OpenChatRoomListItem chatRoom={item} onPress={handleChatRoomPress} />
+    <OpenChatRoomFeedItem chatRoom={item} onPress={handleChatRoomPress} />
   );
 
   const renderEmptyState = () => (
@@ -111,29 +114,8 @@ export default function OpenChatRoomList({ onChatRoomPress, onChatRoomJoin }: Op
     </View>
   );
 
-  const renderErrorState = () => (
-    <View className="flex-1 justify-center items-center p-8">
-      <Text className="text-lg text-red-500 text-center mb-4">
-        Failed to load chat rooms
-      </Text>
-      <Text className="text-sm text-gray-500 text-center mb-4">
-        {error?.message || 'Something went wrong'}
-      </Text>
-      <TouchableOpacity
-        onPress={() => refetch()}
-        className="bg-blue-500 px-4 py-2 rounded-md"
-      >
-        <Text className="text-white font-medium">Try Again</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
   if (isLoading) {
     return renderLoadingState();
-  }
-
-  if (error) {
-    return renderErrorState();
   }
 
   return (

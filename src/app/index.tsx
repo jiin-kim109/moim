@@ -7,63 +7,36 @@ import { fetchUserProfile } from '@hooks/useGetUserProfile';
 export default function SplashPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
-  
-  const handleUserNavigation = async (session: any) => {
-    if (!session) {
-      router.replace('/auth/signin');
-      return;
-    }
 
-    const userProfile = await fetchUserProfile(session.user.id);
-      
-    if (userProfile && !userProfile.is_onboarded) {
-      router.replace('/onboarding');
-    } else {
-      router.replace('/main');
-    }
-  };
-  
   useEffect(() => {
     let mounted = true;
 
-    const checkAuthSession = async () => {
+    (async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Error checking auth session:', error);
-        }
-
+        const { data: { session } } = await supabase.auth.getSession();
         if (!mounted) return;
 
-        await handleUserNavigation(session);
+        if (!session) {
+          router.replace('/auth/signin');
+          return;
+        }
+
+        const userProfile = await fetchUserProfile(session.user.id);
+        if (userProfile && !userProfile.is_onboarded) {
+          router.replace('/onboarding');
+        } else {
+          router.replace('/(main)/(tabs)/home');
+        }
       } catch (error) {
         console.error('Auth check error:', error);
         router.replace('/auth/signin');
       } finally {
         setIsLoading(false);
       }
-    };
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted) return;
-
-        console.debug('Auth state changed:', event, session?.user?.email);
-
-        if (event === 'SIGNED_IN') {
-          await handleUserNavigation(session);
-        } else if (event === 'SIGNED_OUT') {
-          router.replace('/auth/signin');
-        }
-      }
-    );
-
-    checkAuthSession();
+    })();
 
     return () => {
       mounted = false;
-      subscription.unsubscribe();
     };
   }, [router]);
 

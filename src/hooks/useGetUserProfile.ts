@@ -19,9 +19,7 @@ export const fetchUserProfile = async (userId: string | null): Promise<UserProfi
   const { data, error } = await supabase
     .from('user_profile')
     .select(`
-      id,
-      username,
-      is_onboarded,
+      *,
       address:address_id(*)
     `)
     .eq('id', userId)

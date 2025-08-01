@@ -4,7 +4,7 @@ import {
   UseMutationResult,
   useQueryClient,
 } from "@tanstack/react-query";
-import supabase from '../lib/supabase';
+import supabase from '../../lib/supabase';
 
 export type JoinChatroomError = {
   message: string;
@@ -81,6 +81,7 @@ export function useJoinChatroom(
       queryClient.invalidateQueries({ queryKey: ["chatroom", data.chatroom_id] });
       queryClient.invalidateQueries({ queryKey: ["chatMessages", data.chatroom_id] });
       queryClient.invalidateQueries({ queryKey: ['joinedChatrooms', data.user_id] });
+      queryClient.invalidateQueries({ queryKey: ['chatroomParticipants', data.chatroom_id] });
     },
     ...mutationOptions,
   });

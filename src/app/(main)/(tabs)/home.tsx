@@ -1,16 +1,25 @@
 import React from 'react';
-import { SafeAreaView, View } from 'react-native';
+import { SafeAreaView, View, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MessageCirclePlus } from 'lucide-react-native';
 import { Text } from '@components/ui/text';
 import { Button } from '@components/ui/button';
-import OpenChatRoomList from '@components/OpenChatRoomList';
+import OpenChatRoomFeed from '@components/OpenChatRoomFeed';
 import { ChatRoom } from '@hooks/types';
 
-export default function MainScreen() {
+export default function HomeScreen() {
   const router = useRouter();
 
   const handleChatRoomJoin = (chatRoom: ChatRoom) => {
+    if (chatRoom.max_participants && chatRoom.participant_count >= chatRoom.max_participants) {
+      Alert.alert(
+        'Chatroom Full',
+        `This chatroom has reached its maximum capacity of ${chatRoom.max_participants} participants. Please join another chatroom.`,
+        [{ text: 'OK', style: 'default' }]
+      );
+      return;
+    }
+
     setTimeout(() => {
       router.push(`/chatroom/${chatRoom.id}`);
     }, 300); // give delay for smooth animation effect
@@ -40,7 +49,7 @@ export default function MainScreen() {
         </Text>
       </View>
       
-      <OpenChatRoomList onChatRoomJoin={handleChatRoomJoin} />
+      <OpenChatRoomFeed onChatRoomJoin={handleChatRoomJoin} />
     </SafeAreaView>
   );
 } 

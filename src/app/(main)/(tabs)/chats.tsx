@@ -3,7 +3,14 @@ import { View, SafeAreaView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Text } from '@components/ui/text';
 import JoinedChatRoomList from '@components/JoinedChatRoomList';
-import { JoinedChatRoom } from '@hooks/types';
+import { ChatRoom } from '@hooks/types';
+
+interface JoinedChatroomItem {
+  chatroom: ChatRoom;
+  lastMessage: string;
+  unread_count: number;
+}
+
 import supabase from '@lib/supabase';
 
 export default function ChatsScreen() {
@@ -19,8 +26,8 @@ export default function ChatsScreen() {
     getCurrentUser();
   }, []);
 
-  const handleChatRoomPress = (chatRoom: JoinedChatRoom) => {
-    router.push(`/chatroom/${chatRoom.id}`);
+  const handleChatRoomPress = (chatRoomItem: JoinedChatroomItem) => {
+    router.push(`/chatroom/${chatRoomItem.chatroom.id}`);
   };
 
   if (!currentUserId) {
@@ -36,8 +43,8 @@ export default function ChatsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white">
       {/* Header */}
-      <View className="px-4 py-3 border-b border-gray-100">
-        <Text className="text-2xl font-bold text-gray-900">Chats</Text>
+      <View className="px-4 pt-5 pb-2">
+        <Text className="text-2xl font-semibold text-gray-900">Chats</Text>
       </View>
       
       {/* Chat List */}

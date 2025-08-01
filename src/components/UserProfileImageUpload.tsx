@@ -1,22 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { View, TouchableOpacity, Image, Alert } from 'react-native';
-import { Camera, ImageIcon, X } from 'lucide-react-native';
+import { View, TouchableOpacity, Alert } from 'react-native';
+import { User } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Text } from '@components/ui/text';
+import { Avatar, AvatarImage, AvatarFallback } from '@components/ui/avatar';
 import { cn } from '@lib/utils';
 import { FileHolder } from '@lib/objectstore';
 
-interface ChatroomThumbnailUploadProps {
+interface UserProfileImageUploadProps {
   value?: string | null;
   onImageChange?: (fileHolder: FileHolder | null) => void;
   className?: string;
+  size?: 'small' | 'medium' | 'large';
 }
 
-export default function ChatroomThumbnailUpload({
+const sizeClasses = {
+  small: 'w-16 h-16',
+  medium: 'w-24 h-24',
+  large: 'w-32 h-32',
+};
+
+export default function UserProfileImageUpload({
   value,
   onImageChange,
-  className
-}: ChatroomThumbnailUploadProps) {
+  className,
+  size = 'large'
+}: UserProfileImageUploadProps) {
   const [imageUri, setImageUri] = useState<string | null>(value || null);
 
   // Sync internal state with value prop changes
@@ -54,6 +63,7 @@ export default function ChatroomThumbnailUpload({
       },
     ];
 
+    // Add remove option if there's an existing image
     if (imageUri) {
       menuOptions.push({
         text: 'Remove Photo',
@@ -68,8 +78,8 @@ export default function ChatroomThumbnailUpload({
     });
 
     Alert.alert(
-      'Select Image',
-      'Choose how you want to select an image',
+      'Select Profile Picture',
+      'Choose how you want to select your profile picture',
       menuOptions
     );
   };
@@ -79,7 +89,7 @@ export default function ChatroomThumbnailUpload({
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         allowsEditing: true,
-        aspect: [16, 9],
+        aspect: [1, 1], // Square aspect ratio for profile pictures
         quality: 0.8,
       });
 
@@ -99,7 +109,7 @@ export default function ChatroomThumbnailUpload({
     try {
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
-        aspect: [16, 9],
+        aspect: [1, 1], // Square aspect ratio for profile pictures
         quality: 0.8,
       });
 
@@ -122,40 +132,24 @@ export default function ChatroomThumbnailUpload({
 
   return (
     <View className={cn('relative', className)}>
-      <TouchableOpacity
-        onPress={showImagePicker}
-        className={cn(
-          'w-full h-40 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center',
-          imageUri && 'border-solid border-gray-200'
-        )}
-      >
-        {imageUri ? (
-          <Image
-            source={{ uri: imageUri }}
-            className="w-full h-full rounded-lg"
-            resizeMode="cover"
-          />
-        ) : (
-          <View className="items-center">
-            <ImageIcon size={40} color="#9CA3AF" className="mb-2" />
-            <Text className="text-gray-500 text-center text-sm">
-              Tap to add thumbnail
-            </Text>
-            <Text className="text-gray-400 text-center text-xs mt-1">
-              16:9 aspect ratio recommended
-            </Text>
-          </View>
-        )}
+      <TouchableOpacity onPress={showImagePicker}>
+        <Avatar className={cn(sizeClasses[size], 'border-2 border-dashed border-gray-300', imageUri && 'border-solid border-gray-200')} alt="Profile picture">
+          {imageUri ? (
+            <AvatarImage source={{ uri: imageUri }} />
+          ) : (
+            <AvatarFallback className="bg-gray-50">
+              <View className="items-center">
+                <User size={size === 'small' ? 16 : size === 'medium' ? 20 : 24} color="#9CA3AF" />
+                {size === 'large' && (
+                  <Text className="text-gray-500 text-center text-xs mt-1">
+                    Add Photo
+                  </Text>
+                )}
+              </View>
+            </AvatarFallback>
+          )}
+        </Avatar>
       </TouchableOpacity>
-
-      {imageUri && (
-        <TouchableOpacity
-          onPress={removeImage}
-          className="absolute top-2 right-2 bg-black/50 rounded-full p-1"
-        >
-          <X size={16} color="white" />
-        </TouchableOpacity>
-      )}
     </View>
   );
 } 

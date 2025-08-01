@@ -1,5 +1,5 @@
 import React from 'react';
-import { SafeAreaView, View, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { SafeAreaView, View, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
@@ -7,11 +7,14 @@ import { ChevronLeft } from 'lucide-react-native';
 import { z } from 'zod';
 import { Text } from '@components/ui/text';
 import { Input } from '@components/ui/input';
-import { Button } from '@components/ui/button';
 import { Textarea } from '@components/ui/textarea';
 import { Select, SelectOption } from '@components/ui/select';
 import LocationInput from '@components/LocationInput';
 import ChatroomThumbnailUpload from '@components/ChatroomThumbnailUpload';
+import { useCreateChatroom } from '@hooks/chats/useCreateChatroom';
+import { useGetJoinedChatrooms } from '@hooks/chats/useGetJoinedChatrooms';
+import { FileHolder } from '@lib/objectstore';
+import supabase from '@lib/supabase';
 
 import {
   Form,
@@ -24,7 +27,7 @@ import {
 
 // Form schema for creating a chatroom
 const createChatroomSchema = z.object({
-  thumbnail_url: z.string().nullable().optional(),
+  thumbnail_file: z.instanceof(FileHolder).nullable().optional(),
   title: z
     .string()
     .min(1, 'Title is required')
@@ -59,11 +62,25 @@ type CreateChatroomFormValues = z.infer<typeof createChatroomSchema>;
 
 export default function CreateChatroomScreen() {
   const router = useRouter();
+  const createChatroomMutation = useCreateChatroom();
+  const [currentUserId, setCurrentUserId] = React.useState<string | null>(null);
+
+  // Get joined chatrooms to check hosting limit
+  const { data: joinedChatrooms } = useGetJoinedChatrooms(currentUserId || '');
+
+  // Get current user ID on mount
+  React.useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+    };
+    getCurrentUser();
+  }, []);
 
   const form = useForm<CreateChatroomFormValues>({
     resolver: zodResolver(createChatroomSchema),
     defaultValues: {
-      thumbnail_url: null,
+      thumbnail_file: null,
       title: '',
       description: '',
       max_participants: 30,
@@ -72,14 +89,56 @@ export default function CreateChatroomScreen() {
   });
 
   const handleSubmit = form.handleSubmit(async (data) => {
+    if (!currentUserId) {
+      console.error('User not authenticated');
+      return;
+    }
+
+    // Check if user is already hosting 10 chatrooms
+    const hostedChatroomsCount = joinedChatrooms?.filter(chatroom => 
+      chatroom.host_id === currentUserId
+    ).length || 0;
+
+    if (hostedChatroomsCount >= 10) {
+      Alert.alert(
+        'Chatroom Limit Reached',
+        'You can only host up to 10 chatrooms at a time. Please delete one of your existing chatrooms.',
+        [{ text: 'OK', style: 'default' }]
+      );
+      return;
+    }
+
     try {
-      // TODO: Implement chatroom creation logic here
-      console.log('Creating chatroom with data:', data);
+      const chatroomData = {
+        title: data.title,
+        description: data.description || undefined,
+        thumbnail_file: data.thumbnail_file || null,
+        max_participants: data.max_participants,
+        host_id: currentUserId,
+        address: {
+          place_name: data.location!.place_name,
+          address: data.location!.address,
+          city: data.location!.city,
+          state: data.location!.state,
+          postal_code: data.location!.postal_code,
+          country: data.location!.country,
+          longitude: data.location!.longitude,
+          latitude: data.location!.latitude,
+        },
+      };
+
+      const newChatroom = await createChatroomMutation.mutateAsync(chatroomData);
       
-      // For now, just navigate back
-      router.back();
-    } catch (error) {
+      // Navigate to chats first, then to the specific chatroom
+      router.replace('/chats');
+      router.push(`/chatroom/${newChatroom.id}`);
+    } catch (error: any) {
       console.error('Failed to create chatroom:', error);
+      Alert.alert(
+        'Error',
+        'Failed to create chatroom. Please try again.',
+        [{ text: 'OK', style: 'default' }]
+      );
     }
   });
 
@@ -103,7 +162,7 @@ export default function CreateChatroomScreen() {
             onPress={handleSubmit}
             className="p-2"
           >
-            <Text className="text-orange-500 font-semibold text-xl">
+            <Text className="font-semibold text-xl text-orange-500">
               Done
             </Text>
           </TouchableOpacity>
@@ -125,12 +184,12 @@ export default function CreateChatroomScreen() {
                <View className="mb-6">
                  <FormField
                    control={form.control}
-                   name="thumbnail_url"
+                   name="thumbnail_file"
                    render={({ field, fieldState }) => (
                      <FormItem>
                        <FormControl>
                          <ChatroomThumbnailUpload
-                           value={field.value}
+                           value={field.value?.uri || null}
                            onImageChange={field.onChange}
                          />
                        </FormControl>
@@ -211,9 +270,8 @@ export default function CreateChatroomScreen() {
                         }}
                         placeholder="Select max participants"
                         options={[
-                          { value: "10", label: "10 participants" },
                           { value: "30", label: "30 participants" },
-                          { value: "50", label: "50 participants" },
+                          { value: "100", label: "100 participants" },
                         ]}
                         className="mt-2"
                       />

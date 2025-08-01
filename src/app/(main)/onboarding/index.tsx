@@ -221,7 +221,7 @@ export default function OnboardingScreen() {
         });
       }
 
-      router.replace('/main');
+      router.replace('/home');
     })();
   };
 
