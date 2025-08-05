@@ -7,8 +7,6 @@ export type PlaceType = "place" | "address" | "poi";
 
 export interface MapBoxSuggestion {
   id: string;
-  text: string;
-  place_name: string;
   place_type: string[];
   address: Address;
 }
@@ -80,13 +78,11 @@ export function useLocationAPI(options: LocationQueryOptions) {
 
       return {
         id: feature.id,
-        text: feature.text,
-        place_name: feature.place_name,
         place_type: feature.place_type,
         address: {
           place_name: feature.place_name,
-          address: feature.properties?.address || feature.text,
-          city: getContextValue(['place']),
+          address: feature.place_name,
+          city: feature.text,
           state: getContextValue(['region']),
           postal_code: getContextValue(['postcode']),
           country: getContextValue(['country']),

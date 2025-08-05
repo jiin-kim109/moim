@@ -137,7 +137,7 @@ export default function LocationInput({
                   color="#6B7280"
                 />
                 <Text style={styles.suggestionText}>
-                  {suggestion.place_name}
+                  {suggestion.address.place_name}
                 </Text>
               </Pressable>
             ))}

@@ -4,18 +4,14 @@ import {
   UseQueryResult,
 } from "@tanstack/react-query";
 import supabase from '../../lib/supabase';
-import { ChatRoomParticipant, UserProfile } from '../types';
+import { ChatRoomParticipant } from '../types';
 
 export type ChatroomParticipantsError = {
   message: string;
   code?: string;
 };
 
-export type ChatroomParticipantWithProfile = ChatRoomParticipant & {
-  user: UserProfile;
-};
-
-export const fetchChatroomParticipants = async (chatroomId: string): Promise<ChatroomParticipantWithProfile[]> => {
+export const fetchChatroomParticipants = async (chatroomId: string): Promise<ChatRoomParticipant[]> => {
   if (!chatroomId) {
     return [];
   }
@@ -23,7 +19,8 @@ export const fetchChatroomParticipants = async (chatroomId: string): Promise<Cha
   const { data, error } = await supabase
     .from('chatroom_participants')
     .select(`
-      *
+      *,
+      user:user_profile(*)
     `)
     .eq('chatroom_id', chatroomId)
     .order('joined_at', { ascending: true });
@@ -37,9 +34,9 @@ export const fetchChatroomParticipants = async (chatroomId: string): Promise<Cha
 
 export function useGetChatroomParticipants(
   chatroomId: string,
-  queryOptions?: Partial<UseQueryOptions<ChatroomParticipantWithProfile[], ChatroomParticipantsError>>,
-): UseQueryResult<ChatroomParticipantWithProfile[], ChatroomParticipantsError> {
-  return useQuery<ChatroomParticipantWithProfile[], ChatroomParticipantsError>({
+  queryOptions?: Partial<UseQueryOptions<ChatRoomParticipant[], ChatroomParticipantsError>>,
+): UseQueryResult<ChatRoomParticipant[], ChatroomParticipantsError> {
+  return useQuery<ChatRoomParticipant[], ChatroomParticipantsError>({
     queryKey: ["chatroomParticipants", chatroomId],
     queryFn: () => fetchChatroomParticipants(chatroomId),
     enabled: !!chatroomId,

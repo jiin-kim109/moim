@@ -13,8 +13,9 @@ import LocationInput from '@components/LocationInput';
 import ChatroomThumbnailUpload from '@components/ChatroomThumbnailUpload';
 import { useCreateChatroom } from '@hooks/chats/useCreateChatroom';
 import { useGetJoinedChatrooms } from '@hooks/chats/useGetJoinedChatrooms';
+import { useGetCurrentUserProfile } from '@hooks/useGetCurrentUserProfile';
 import { FileHolder } from '@lib/objectstore';
-import supabase from '@lib/supabase';
+import { useDebouncedFunction } from '@lib/utils';
 
 import {
   Form,
@@ -63,19 +64,13 @@ type CreateChatroomFormValues = z.infer<typeof createChatroomSchema>;
 export default function CreateChatroomScreen() {
   const router = useRouter();
   const createChatroomMutation = useCreateChatroom();
-  const [currentUserId, setCurrentUserId] = React.useState<string | null>(null);
+  const { data: userProfile } = useGetCurrentUserProfile();
+  const currentUserId = userProfile?.id;
 
   // Get joined chatrooms to check hosting limit
-  const { data: joinedChatrooms } = useGetJoinedChatrooms(currentUserId || '');
-
-  // Get current user ID on mount
-  React.useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setCurrentUserId(user?.id || null);
-    };
-    getCurrentUser();
-  }, []);
+  const { data: joinedChatrooms } = useGetJoinedChatrooms(currentUserId || '', {
+    enabled: !!currentUserId,
+  });
 
   const form = useForm<CreateChatroomFormValues>({
     resolver: zodResolver(createChatroomSchema),
@@ -148,7 +143,7 @@ export default function CreateChatroomScreen() {
         {/* Header */}
         <View className="flex-row items-center justify-between px-4 py-3">
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={useDebouncedFunction(() => router.back())}
             className="p-2 -ml-2"
           >
             <ChevronLeft size={24} color="#000" />
@@ -159,7 +154,7 @@ export default function CreateChatroomScreen() {
           </Text>
           
           <TouchableOpacity
-            onPress={handleSubmit}
+            onPress={useDebouncedFunction(handleSubmit)}
             className="p-2"
           >
             <Text className="font-semibold text-xl text-orange-500">

@@ -15,13 +15,10 @@ CREATE OR REPLACE FUNCTION broadcast_system_message(message_record chat_messages
 RETURNS VOID AS $$
 BEGIN
     PERFORM realtime.send(
-        jsonb_build_object(
-            'type', 'system_message',
-            'payload', row_to_json(message_record)
-        ),
-        'system_message_created',
-        chatroom_id,
-        false
+        row_to_json(message_record)::jsonb, -- JSONB Payload
+        'system_message_created', -- Event name
+        chatroom_id, -- Channel
+        false -- Public / Private flag
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -46,6 +43,38 @@ BEGIN
     PERFORM broadcast_system_message(new_message, OLD.chatroom_id);
     
     RETURN OLD;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to add system message when participant joins chatroom
+CREATE OR REPLACE FUNCTION add_participant_join_message()
+RETURNS TRIGGER AS $$
+DECLARE
+    new_message chat_messages%ROWTYPE;
+    chatroom_host_id UUID;
+BEGIN
+    -- Get the host_id of the chatroom
+    SELECT host_id INTO chatroom_host_id
+    FROM chatroom
+    WHERE id = NEW.chatroom_id;
+    
+    -- Only create join message if the participant is not the host
+    IF NEW.user_id != chatroom_host_id THEN
+        -- Insert system message about participant joining
+        INSERT INTO chat_messages (chatroom_id, sender_id, message, message_type)
+        VALUES (
+            NEW.chatroom_id,
+            NEW.user_id,
+            NEW.nickname || ' joined the chatroom',
+            'system_message'
+        )
+        RETURNING * INTO new_message;
+        
+        -- Broadcast the system message to the chatroom channel
+        PERFORM broadcast_system_message(new_message, NEW.chatroom_id);
+    END IF;
+    
+    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -84,6 +113,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Create trigger for participant join messages
+CREATE TRIGGER participant_join_system_message
+    AFTER INSERT ON chatroom_participants
+    FOR EACH ROW EXECUTE FUNCTION add_participant_join_message();
+
 -- Create trigger for participant exit messages
 CREATE TRIGGER participant_exit_system_message
     AFTER DELETE ON chatroom_participants
@@ -96,5 +130,6 @@ CREATE TRIGGER host_change_system_message
 
 -- Add comments to document the functions and triggers
 COMMENT ON FUNCTION broadcast_system_message(chat_messages, TEXT) IS 'Broadcasts system message to specific chatroom channel via realtime';
+COMMENT ON FUNCTION add_participant_join_message() IS 'Automatically adds system message when a participant joins a chatroom';
 COMMENT ON FUNCTION add_participant_exit_message() IS 'Automatically adds system message when a participant leaves a chatroom';
 COMMENT ON FUNCTION add_host_change_message() IS 'Automatically adds system message when chatroom host changes';

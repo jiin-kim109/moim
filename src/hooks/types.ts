@@ -14,6 +14,7 @@ export interface UserProfile {
   username: string;
   profile_image_url?: string | null;
   is_onboarded: boolean;
+  neighborhood_distance_km: number;
   address?: Address | null;
 }
 
@@ -21,6 +22,7 @@ export interface ChatRoomParticipant {
   user_id: string;
   nickname: string | null;
   joined_at: string;
+  user: UserProfile;
 }
 
 export interface ChatRoom {

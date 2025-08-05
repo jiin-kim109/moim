@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useColorScheme as useNativewindColorScheme } from 'nativewind';
+import { useRef } from 'react';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -13,22 +14,17 @@ export function formatTimeForChatRoomList(dateString: string): string {
   const daysDiff = Math.floor(diff / (1000 * 60 * 60 * 24));
 
   if (daysDiff === 0) {
-    // Today - show time
+    // Today - show time like "2:35 AM"
     return date.toLocaleTimeString('en-US', { 
       hour: 'numeric', 
       minute: '2-digit',
       hour12: true 
     });
   } else if (daysDiff === 1) {
-    // Yesterday
     return 'Yesterday';
-  } else if (daysDiff < 7) {
-    // This week - show day name
-    return date.toLocaleDateString('en-US', { weekday: 'short' });
   } else {
-    // More than a week - show date
     return date.toLocaleDateString('en-US', { 
-      month: 'numeric', 
+      month: 'short', 
       day: 'numeric' 
     });
   }
@@ -42,4 +38,24 @@ export function useColorScheme() {
     setColorScheme,
     toggleColorScheme,
   };
+}
+
+export function useDebouncedFunction<T extends (...args: any[]) => any>(
+  func: T,
+  delay: number = 1000
+): T {
+  const isExecutingRef = useRef(false);
+  
+  return ((...args: Parameters<T>) => {
+    if (isExecutingRef.current) {
+      return;
+    }
+    
+    isExecutingRef.current = true;
+    func(...args);
+    
+    setTimeout(() => {
+      isExecutingRef.current = false;
+    }, delay);
+  }) as T;
 }

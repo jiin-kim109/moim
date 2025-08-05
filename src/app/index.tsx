@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import supabase from '@lib/supabase';
-import { fetchUserProfile } from '@hooks/useGetUserProfile';
+import { fetchCurrentUserProfile } from '@hooks/useGetCurrentUserProfile';
 
 export default function SplashPage() {
   const router = useRouter();
@@ -21,7 +21,7 @@ export default function SplashPage() {
           return;
         }
 
-        const userProfile = await fetchUserProfile(session.user.id);
+        const userProfile = await fetchCurrentUserProfile();
         if (userProfile && !userProfile.is_onboarded) {
           router.replace('/onboarding');
         } else {

@@ -11,8 +11,10 @@ export type UserProfileError = {
   code?: string;
 };
 
-export const fetchUserProfile = async (userId: string | null): Promise<UserProfile | null> => {
-  if (!userId) {
+export const fetchCurrentUserProfile = async (): Promise<UserProfile | null> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
     return null;
   }
 
@@ -22,23 +24,22 @@ export const fetchUserProfile = async (userId: string | null): Promise<UserProfi
       *,
       address:address_id(*)
     `)
-    .eq('id', userId)
+    .eq('id', user.id)
     .single();
 
   if (error) {
-    throw new Error(`Failed to fetch user profile: ${error.message}`);
+    throw new Error(`Failed to fetch current user profile: ${error.message}`);
   }
 
   return data as UserProfile;
 };
 
-export function useGetUserProfile(
-  userId: string,
+export function useGetCurrentUserProfile(
   queryOptions?: Partial<UseQueryOptions<UserProfile | null, UserProfileError>>,
 ): UseQueryResult<UserProfile | null, UserProfileError> {
   return useQuery<UserProfile | null, UserProfileError>({
-    queryKey: ["userProfile", userId],
-    queryFn: () => fetchUserProfile(userId),
+    queryKey: ["userProfile"],
+    queryFn: fetchCurrentUserProfile,
     ...queryOptions,
   });
 } 

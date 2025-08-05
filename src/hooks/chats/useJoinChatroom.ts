@@ -80,8 +80,8 @@ export function useJoinChatroom(
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["chatroom", data.chatroom_id] });
       queryClient.invalidateQueries({ queryKey: ["chatMessages", data.chatroom_id] });
-      queryClient.invalidateQueries({ queryKey: ['joinedChatrooms', data.user_id] });
-      queryClient.invalidateQueries({ queryKey: ['chatroomParticipants', data.chatroom_id] });
+      queryClient.invalidateQueries({ queryKey: ["joinedChatrooms"] });
+      queryClient.invalidateQueries({ queryKey: ["chatroomParticipants", data.chatroom_id] });
     },
     ...mutationOptions,
   });

@@ -6,11 +6,12 @@ import { Text } from '@components/ui/text';
 import { Button } from '@components/ui/button';
 import OpenChatRoomFeed from '@components/OpenChatRoomFeed';
 import { ChatRoom } from '@hooks/types';
+import { useDebouncedFunction } from '@lib/utils';
 
 export default function HomeScreen() {
   const router = useRouter();
 
-  const handleChatRoomJoin = (chatRoom: ChatRoom) => {
+  const handleChatRoomJoin = useDebouncedFunction((chatRoom: ChatRoom) => {
     if (chatRoom.max_participants && chatRoom.participant_count >= chatRoom.max_participants) {
       Alert.alert(
         'Chatroom Full',
@@ -23,11 +24,11 @@ export default function HomeScreen() {
     setTimeout(() => {
       router.push(`/chatroom/${chatRoom.id}`);
     }, 300); // give delay for smooth animation effect
-  };
+  });
 
-  const handleCreateChatRoom = () => {
+  const handleCreateChatRoom = useDebouncedFunction(() => {
     router.push('/chatroom/create');
-  };
+  });
 
   return (
     <SafeAreaView className="flex-1 bg-background">

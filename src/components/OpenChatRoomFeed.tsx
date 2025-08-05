@@ -4,7 +4,8 @@ import { Text } from './ui/text';
 import { User, MapPin } from 'lucide-react-native';
 import { ChatRoom } from '../hooks/types';
 import ChatRoomDetail from './ChatRoomDetail';
-import { useGetRecommendedChatrooms } from '../hooks/chats/useGetRecommendedChatrooms';
+import { useGetRecommendedChatrooms, RecommendedChatroomsPage } from '../hooks/chats/useGetRecommendedChatrooms';
+import { useGetCurrentUserProfile } from '../hooks/useGetCurrentUserProfile';
 
 interface OpenChatRoomFeedItemProps {
   chatRoom: ChatRoom;
@@ -63,12 +64,29 @@ interface OpenChatRoomFeedProps {
 }
 
 export default function OpenChatRoomFeed({ onChatRoomPress, onChatRoomJoin }: OpenChatRoomFeedProps) {
-  const { data: chatRooms, isLoading, refetch } = useGetRecommendedChatrooms({
-    retry: true,
-    retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 15000),
-  });
+  const { data: userProfile } = useGetCurrentUserProfile();
+  const currentUserId = userProfile?.id;
   const [selectedChatRoom, setSelectedChatRoom] = useState<ChatRoom | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
+
+  const { 
+    data, 
+    isLoading, 
+    fetchNextPage, 
+    hasNextPage, 
+    isFetchingNextPage,
+    refetch 
+  } = useGetRecommendedChatrooms(
+    currentUserId || '',
+    {
+      enabled: !!currentUserId,
+      retry: true,
+      retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 15000),
+    }
+  );
+
+  // Flatten the paginated data
+  const chatRooms = data?.pages.flatMap((page) => (page as RecommendedChatroomsPage).chatrooms) || [];
 
   const handleChatRoomPress = (chatRoom: ChatRoom) => {
     setSelectedChatRoom(chatRoom);
@@ -102,7 +120,7 @@ export default function OpenChatRoomFeed({ onChatRoomPress, onChatRoomJoin }: Op
         No chat rooms available
       </Text>
       <Text className="text-sm text-gray-400 text-center mt-2">
-        Check back later for new rooms to join
+        Check back later or create your own!
       </Text>
     </View>
   );
@@ -114,7 +132,13 @@ export default function OpenChatRoomFeed({ onChatRoomPress, onChatRoomJoin }: Op
     </View>
   );
 
-  if (isLoading) {
+  const handleEndReached = () => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  };
+
+  if (isLoading && chatRooms.length === 0) {
     return renderLoadingState();
   }
 
@@ -127,7 +151,9 @@ export default function OpenChatRoomFeed({ onChatRoomPress, onChatRoomJoin }: Op
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={renderEmptyState}
         onRefresh={refetch}
-        refreshing={isLoading}
+        refreshing={isLoading && chatRooms.length === 0}
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.1}
       />
       
       <ChatRoomDetail

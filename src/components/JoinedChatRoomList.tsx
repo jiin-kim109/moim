@@ -62,9 +62,9 @@ function JoinedChatRoomListItem({ chatRoom, userId, onPress }: JoinedChatRoomLis
             </Text>
           </View>
           {/* Timestamp */}
-          {chatroomItem.lastMessage && (
+          {latestMessage?.created_at && (
             <Text className="text-md text-gray-400 ml-2">
-              {formatTimeForChatRoomList(chatroomItem.chatroom.created_at)}
+              {formatTimeForChatRoomList(latestMessage.created_at)}
             </Text>
           )}
         </View>

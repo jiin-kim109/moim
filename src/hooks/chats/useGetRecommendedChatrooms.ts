@@ -1,40 +1,70 @@
 import {
-  useQuery,
-  UseQueryOptions,
-  UseQueryResult,
+  useInfiniteQuery,
+  QueryClient,
 } from "@tanstack/react-query";
 import supabase from '../../lib/supabase';
 import { ChatRoom } from '../types';
-import { transformChatroomData } from './useGetChatroom';
 
 export type RecommendedChatroomsError = {
   message: string;
   code?: string;
 };
 
-export const fetchRecommendedChatrooms = async (): Promise<ChatRoom[]> => {
-  const { data, error } = await supabase
-    .from('chatroom')
-    .select(`
-      *,
-      address:address_id(*),
-      participant_count:chatroom_participants(count)
-    `)
-    .order('created_at', { ascending: false });
+export type RecommendedChatroomsPage = {
+  chatrooms: ChatRoom[];
+  nextPage?: number;
+  hasMore: boolean;
+};
 
-  if (error) {
-    throw new Error(`Failed to fetch chatrooms: ${error.message}`);
+const PAGE_SIZE = 20;
+
+export const fetchRecommendedChatrooms = async (
+  userId: string,
+  pageNumber: number = 1
+): Promise<RecommendedChatroomsPage> => {
+  if (!userId) {
+    return {
+      chatrooms: [],
+      hasMore: false,
+    };
   }
 
-  return (data || []).map(transformChatroomData);
+  const { data, error } = await supabase.rpc('get_chatrooms_by_location', {
+    user_id: userId,
+    page_size: PAGE_SIZE,
+    page_number: pageNumber
+  });
+
+  if (error) {
+    throw new Error(`Failed to fetch recommended chatrooms: ${error.message}`);
+  }
+
+  const chatrooms = (data || []).map((item: any) => ({
+    ...item,
+    participant_count: parseInt(item.participant_count) || 0,
+    distance_km: parseFloat(item.distance_km) || 0,
+  }));
+
+  const hasMore = chatrooms.length === PAGE_SIZE;
+  const nextPage = hasMore ? pageNumber + 1 : undefined;
+
+  return {
+    chatrooms,
+    nextPage,
+    hasMore,
+  };
 };
 
 export function useGetRecommendedChatrooms(
-  queryOptions?: Partial<UseQueryOptions<ChatRoom[], RecommendedChatroomsError>>,
-): UseQueryResult<ChatRoom[], RecommendedChatroomsError> {
-  return useQuery<ChatRoom[], RecommendedChatroomsError>({
-    queryKey: ["recommendedChatrooms"],
-    queryFn: fetchRecommendedChatrooms,
+  userId: string,
+  queryOptions?: any,
+) {
+  return useInfiniteQuery({
+    queryKey: ["recommendedChatrooms", userId],
+    queryFn: ({ pageParam }) => fetchRecommendedChatrooms(userId, pageParam as number || 1),
+    enabled: !!userId,
+    getNextPageParam: (lastPage: RecommendedChatroomsPage) => lastPage.hasMore ? lastPage.nextPage : undefined,
+    initialPageParam: 1,
     ...queryOptions,
   });
 } 

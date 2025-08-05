@@ -43,7 +43,7 @@ export function useGetJoinedChatrooms(
   queryOptions?: Partial<UseQueryOptions<ChatRoom[], JoinedChatroomsError>>,
 ): UseQueryResult<ChatRoom[], JoinedChatroomsError> {
   return useQuery<ChatRoom[], JoinedChatroomsError>({
-    queryKey: ["joinedChatrooms", userId],
+    queryKey: ["joinedChatrooms"],
     queryFn: () => fetchJoinedChatrooms(userId),
     enabled: !!userId,
     ...queryOptions,

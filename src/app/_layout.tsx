@@ -5,8 +5,12 @@ import { useColorScheme } from '@lib/utils';
 import React from 'react';
 import { Stack } from 'expo-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { DevToolsBubble } from 'react-native-react-query-devtools';
+import * as Clipboard from 'expo-clipboard';
 import { DarkTheme, DefaultTheme, Theme, ThemeProvider } from '@react-navigation/native';
 import { Platform } from 'react-native';
+import { Toaster } from 'sonner-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 
 const LIGHT_THEME: Theme = {
@@ -34,14 +38,19 @@ export default function RootLayout() {
   const { colorScheme, isDarkColorScheme } = useColorScheme();
   const [isColorSchemeLoaded, setIsColorSchemeLoaded] = React.useState(false);
 
+  // Copy function for React Query DevTools
+  const onCopy = async (text: string) => {
+    try {
+      await Clipboard.setStringAsync(text);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   useIsomorphicLayoutEffect(() => {
     if (hasMounted.current) {
       return;
-    }
-
-    if (Platform.OS === 'web') {
-      // Adds the background color to the html element to prevent white background on overscroll.
-      document.documentElement.classList.add('bg-background');
     }
     setIsColorSchemeLoaded(true);
     hasMounted.current = true;
@@ -52,15 +61,19 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
-      <QueryClientProvider client={queryClient}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="(main)" />
-          <Stack.Screen name="auth" />
-        </Stack>
-      </QueryClientProvider>
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
+        <QueryClientProvider client={queryClient}>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen name="(main)" />
+            <Stack.Screen name="auth" />
+          </Stack>
+          <Toaster />
+          {__DEV__ && <DevToolsBubble queryClient={queryClient} onCopy={onCopy} />}
+        </QueryClientProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
 

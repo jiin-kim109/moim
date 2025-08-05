@@ -59,8 +59,6 @@ export function useSendChatMessage(
       
       // Invalidate and refetch chat messages
       queryClient.invalidateQueries({ queryKey: ['chatMessages', variables.chatroom_id] });
-      // Update the latest message in joined chatrooms
-      queryClient.invalidateQueries({ queryKey: ['joinedChatrooms', variables.sender_id] });
       // Mark the sent message as last read message
       await localStorage.setLastReadMessage(variables.chatroom_id, newMessage);
     },

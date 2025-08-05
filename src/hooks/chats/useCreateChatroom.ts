@@ -83,7 +83,7 @@ export function useCreateChatroom(
   return useMutation<ChatRoom, CreateChatroomError, CreateChatroomData>({
     mutationFn: createChatroom,
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['joinedChatrooms', variables.host_id] });
+      queryClient.invalidateQueries({ queryKey: ['joinedChatrooms'] });
     },
     ...mutationOptions,
   });

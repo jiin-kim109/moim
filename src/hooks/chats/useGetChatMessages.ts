@@ -83,8 +83,6 @@ export function useGetChatMessages(
     enabled: !!chatroomId,
     getNextPageParam: (lastPage: ChatMessagesPage) => lastPage.hasMore ? lastPage.nextCursor : undefined,
     initialPageParam: undefined,
-    staleTime: 0, // Always consider data stale to refetch on load
-    refetchOnMount: true, // Always refetch when component mounts
     ...queryOptions,
   });
 }

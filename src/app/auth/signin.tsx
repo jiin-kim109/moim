@@ -5,7 +5,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import supabase from '@lib/supabase';
-import { fetchUserProfile } from '@hooks/useGetUserProfile';
 import { Button } from '@components/ui/button';
 import { Text } from '@components/ui/text';
 import { Input } from '@components/ui/input';
@@ -26,8 +25,7 @@ const signInSchema = z.object({
     .email('Please enter a valid email address'),
   password: z
     .string()
-    .min(1, 'Password is required')
-    .min(6, 'Password must be at least 6 characters'),
+    .min(1, 'Password is required'),
 });
 
 type SignInFormValues = z.infer<typeof signInSchema>;
@@ -204,7 +202,7 @@ export default function SignInScreen() {
               Don't have an account?
             </Text>
             <Button
-              onPress={() => router.push('/auth/signup')}
+              onPress={() => router.replace('/auth/signup')}
               variant="link"
               className="p-0 h-auto ml-1"
             >

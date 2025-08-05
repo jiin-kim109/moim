@@ -7,10 +7,9 @@ import { Input } from '@components/ui/input';
 import { ChevronRight, ChevronLeft } from 'lucide-react-native';
 import { z } from 'zod';
 import LocationInput from '@components/LocationInput';
+
 import { findUserByUsername } from '@hooks/useFindUser';
-import { useUpdateUser } from '@hooks/useUpdateUser';
-import { useUpdateUserAddress } from '@hooks/useUpdateUserAddress';
-import supabase from '@lib/supabase';
+import { useUpdateUserProfile } from '@hooks/useUpdateUserProfile';
 import {
   Form,
   FormControl,
@@ -26,7 +25,8 @@ const onboardingSchema = z.object({
   username: z
     .string()
     .min(1, 'Username is required')
-    .min(3, 'Username must be at least 3 characters'),
+    .min(3, 'Username must be at least 3 characters')
+    .max(16, 'Username must be at most 16 characters'),
   location: z
     .object({
       place_name: z.string().min(1, 'Location is required'),
@@ -125,8 +125,7 @@ export default function OnboardingScreen() {
   const [currentStep, setCurrentStep] = useState(0);
   const [slideAnim] = useState(new Animated.Value(0));
   
-  const updateUser = useUpdateUser();
-  const updateAddress = useUpdateUserAddress();
+  const updateUser = useUpdateUserProfile();
 
   const form = useForm<OnboardingFormValues>({
     resolver: zodResolver(onboardingSchema),
@@ -200,26 +199,11 @@ export default function OnboardingScreen() {
 
   const handleSubmit = () => {
     form.handleSubmit(async (data) => {
-      const session = await supabase.auth.getSession();
-      const userId = session.data.session?.user.id;
-      if (!userId)
-        throw new Error('No authenticated user found');
-
       await updateUser.mutateAsync({
-        userId,
-        updateData: {
-          username: data.username,
-          is_onboarded: true,
-        },
+        username: data.username,
+        is_onboarded: true,
+        address: data.location || undefined,
       });
-
-      // Update user address
-      if (data.location) {
-        await updateAddress.mutateAsync({
-          userId,
-          addressData: data.location,
-        });
-      }
 
       router.replace('/home');
     })();

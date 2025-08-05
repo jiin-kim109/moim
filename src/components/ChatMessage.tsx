@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
 import { User } from 'lucide-react-native';
 import { Text } from '@components/ui/text';
 import { Avatar, AvatarImage, AvatarFallback } from '@components/ui/avatar';
@@ -8,6 +8,7 @@ import { ChatMessage as ChatMessageType } from '@hooks/types';
 interface ChatMessageProps {
   message: ChatMessageType;
   isCurrentUser?: boolean;
+  onLongPress?: (message: ChatMessageType) => void;
 }
 
 interface DeletedMessageProps {
@@ -84,10 +85,14 @@ function SystemMessage({ message }: SystemMessageProps) {
   );
 }
 
-export default function ChatMessage({ message, isCurrentUser = false }: ChatMessageProps) {
+export default function ChatMessage({ message, isCurrentUser = false, onLongPress }: ChatMessageProps) {
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const handleLongPress = () => {
+    onLongPress?.(message);
   };
 
   // System message
@@ -127,26 +132,31 @@ export default function ChatMessage({ message, isCurrentUser = false }: ChatMess
                 {formatTime(message.created_at)}
               </Text>
             )}
-            <View
-              className={`px-4 py-2 rounded-2xl ${
-                isCurrentUser 
-                  ? 'bg-orange-500 rounded-br-md' 
-                  : 'bg-white rounded-bl-md border border-gray-200'
-              }`}
+            <TouchableOpacity
+              onLongPress={handleLongPress}
+              activeOpacity={0.7}
             >
-              <Text className={`text-base ${isCurrentUser ? 'text-white' : 'text-gray-900'}`}>
-                {message.message}
-              </Text>
-              {message.is_edited && (
-                <Text 
-                  className={`text-sm mt-1 italic ${
-                    isCurrentUser ? 'text-orange-100' : 'text-gray-400'
-                  }`}
-                >
-                  edited
+              <View
+                className={`px-4 py-2 rounded-2xl ${
+                  isCurrentUser 
+                    ? 'bg-orange-500 rounded-br-md' 
+                    : 'bg-white rounded-bl-md border border-gray-200'
+                }`}
+              >
+                <Text className={`text-base ${isCurrentUser ? 'text-white' : 'text-gray-900'}`}>
+                  {message.message}
                 </Text>
-              )}
-            </View>
+                {message.is_edited && (
+                  <Text 
+                    className={`text-sm mt-1 italic ${
+                      isCurrentUser ? 'text-orange-100' : 'text-gray-400'
+                    }`}
+                  >
+                    edited
+                  </Text>
+                )}
+              </View>
+            </TouchableOpacity>
             {!isCurrentUser && (
               <Text className="text-sm text-gray-400 ml-2">
                 {formatTime(message.created_at)}

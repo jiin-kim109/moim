@@ -2,24 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { View, Alert, SafeAreaView, TouchableOpacity, ActionSheetIOS, Platform } from 'react-native';
 import { Menu, MapPin, Settings } from 'lucide-react-native';
 import supabase from '@lib/supabase';
-import { Button } from '@components/ui/button';
 import { Text } from '@components/ui/text';
 import { Skeleton } from '@components/ui/skeleton';
-
-import { H2, P } from '@components/ui/typography';
 import { Session } from '@supabase/supabase-js';
 import { useRouter } from 'expo-router';
 import UserProfileImageUpload from '@components/UserProfileImageUpload';
-import { useGetUserProfile } from '@hooks/useGetUserProfile';
-import { useUpdateUser } from '@hooks/useUpdateUser';
+import { useGetCurrentUserProfile } from '@hooks/useGetCurrentUserProfile';
+import { useUpdateUserProfile } from '@hooks/useUpdateUserProfile';
 import { FileHolder } from '@lib/objectstore';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
   
-  const { data: userProfile } = useGetUserProfile(session?.user?.id || '');
-  const updateUserMutation = useUpdateUser();
+  const { data: userProfile } = useGetCurrentUserProfile();
+  const updateUserMutation = useUpdateUserProfile();
   const [profileImageUri, setProfileImageUri] = useState<string | null>(userProfile?.profile_image_url || null);
 
   // on trigger after userProfile is loaded
@@ -28,23 +25,20 @@ export default function ProfileScreen() {
   }, [userProfile?.profile_image_url]);
 
   const handleProfileImageChange = async (fileHolder: FileHolder | null) => {
-    if (session?.user?.id) {
-      try {
-        if (fileHolder) {
-          setProfileImageUri(fileHolder.uri);
-        } else {
-          setProfileImageUri(null);
-        }
-        
-        await updateUserMutation.mutateAsync({
-          userId: session.user.id,
-          updateData: { profile_image_file: fileHolder }
-        });
-      } catch (error) {
-        console.error('Failed to update profile image:', error);
-        Alert.alert('Error', 'Failed to update profile image. Please try again later.');
-        setProfileImageUri(userProfile?.profile_image_url || null);
+    try {
+      if (fileHolder) {
+        setProfileImageUri(fileHolder.uri);
+      } else {
+        setProfileImageUri(null);
       }
+      
+      await updateUserMutation.mutateAsync({ 
+        profile_image_file: fileHolder 
+      });
+    } catch (error) {
+      console.error('Failed to update profile image:', error);
+      Alert.alert('Error', 'Failed to update profile image. Please try again later.');
+      setProfileImageUri(userProfile?.profile_image_url || null);
     }
   };
 
@@ -165,8 +159,7 @@ export default function ProfileScreen() {
         },
         (buttonIndex) => {
           if (buttonIndex === 1) {
-            // TODO: Update current location
-            Alert.alert('Update Location', 'Update location feature coming soon');
+            router.push('/profile/update_location');
           } else if (buttonIndex === 2) {
             // TODO: Navigate to notification settings
             Alert.alert('Notification Settings', 'Notification settings feature coming soon');
@@ -181,7 +174,7 @@ export default function ProfileScreen() {
         [
           {
             text: 'Update Current Location',
-            onPress: () => Alert.alert('Update Location', 'Update location feature coming soon'),
+            onPress: () => router.push('/profile/update_location'),
           },
           {
             text: 'Notification Settings',
@@ -244,31 +237,25 @@ export default function ProfileScreen() {
                     </View>
                   </View>
                 )}
+                
+
               </View>
             </View>
           </View>
         ) : (
-          <View className="flex-1 justify-between">
+          <View className="flex-1">
             <View className="space-y-6">
               {/* Profile Image Skeleton */}
-              <View className="items-center mb-6">
+              <View className="items-center mb-8">
                 <Skeleton className="w-24 h-24 rounded-full" />
               </View>
 
-              {/* User Information Skeletons */}
-              <View className="space-y-4 gap-6">
-                <View className="space-y-2">
-                  <Skeleton className="w-16 h-6" />
-                  <Skeleton className="w-48 h-5" />
-                </View>
-                
-                <View className="space-y-2">
-                  <Skeleton className="w-20 h-6" />
-                  <View className="flex-row items-center gap-2">
-                    <Skeleton className="w-4 h-4" />
-                    <Skeleton className="w-40 h-5" />
-                  </View>
-                </View>
+              {/* Simple horizontal bars for profile fields */}
+              <View className="space-y-4">
+                <Skeleton className="w-full h-4" />
+                <Skeleton className="w-3/4 h-4" />
+                <Skeleton className="w-5/6 h-4" />
+                <Skeleton className="w-2/3 h-4" />
               </View>
             </View>
           </View>

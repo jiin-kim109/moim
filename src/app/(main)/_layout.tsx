@@ -1,20 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
-import { ChatMessageSubscriptionProvider, useChatMessageSubscriptionContext } from '@hooks/chats/useChatMessageSubscription';
+import { ChatMessageSubscriptionProvider, useChatMessageSubscriptionContext } from '@hooks/message/useChatMessageSubscription';
 import { useGetJoinedChatrooms } from '@hooks/chats/useGetJoinedChatrooms';
-import supabase from '@lib/supabase';
+import { useGetCurrentUserProfile } from '@hooks/useGetCurrentUserProfile';
 
 function SubscriptionManager() {
   const { refreshSubscriptions } = useChatMessageSubscriptionContext();
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setCurrentUserId(user?.id || null);
-    };
-    getCurrentUser();
-  }, []);
+  const { data: userProfile } = useGetCurrentUserProfile();
+  const currentUserId = userProfile?.id;
 
   const { data: joinedChatrooms } = useGetJoinedChatrooms(currentUserId || '', {
     enabled: !!currentUserId,

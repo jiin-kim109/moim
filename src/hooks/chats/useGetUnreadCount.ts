@@ -27,7 +27,7 @@ export const fetchUnreadCount = async (
       .eq('is_deleted', false) // Only count non-deleted messages
       .order('created_at', { ascending: false });
 
-    if (lastReadMessage) {
+    if (lastReadMessage && lastReadMessage.created_at) {
       query = query.gt('created_at', lastReadMessage.created_at);
     }
 

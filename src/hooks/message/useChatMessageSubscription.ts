@@ -7,6 +7,7 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 interface ChatMessageSubscriptionContextType {
   refreshSubscriptions: (chatroomIds: string[]) => void;
   broadcastMessageCreatedEvent: (message: ChatMessage) => Promise<void>;
+  broadcastMessageDeletedEvent: (message: ChatMessage) => Promise<void>;
 }
 
 const ChatMessageSubscriptionContext = createContext<ChatMessageSubscriptionContextType | null>(null);
@@ -34,6 +35,8 @@ export function ChatMessageSubscriptionProvider({
   const handleMessageCreatedEvent = useCallback((chatroomId: string) => (payload: any) => {
     const newMessage = payload.payload as ChatMessage;
     queryClient.setQueryData(['chatMessages', chatroomId], (oldData: any) => {
+      if (!oldData) return oldData;
+      
       return {
         ...oldData,
         pages: oldData.pages.map((page: any, index: number) => {
@@ -49,6 +52,8 @@ export function ChatMessageSubscriptionProvider({
     });
     
     queryClient.invalidateQueries({ queryKey: ['unreadCount', chatroomId] });
+    // Invalidate joined chatrooms to update last message display
+    queryClient.invalidateQueries({ queryKey: ['joinedChatrooms'] });
   }, [queryClient]);
 
   const handleMessageEditedEvent = useCallback((chatroomId: string) => (payload: any) => {
@@ -83,7 +88,10 @@ export function ChatMessageSubscriptionProvider({
 
   const handleSystemMessageCreated = useCallback((chatroomId: string) => (payload: any) => {
     const newSystemMessage = payload.payload as ChatMessage;
+    
     queryClient.setQueryData(['chatMessages', chatroomId], (oldData: any) => {
+      if (!oldData) return oldData;
+      
       return {
         ...oldData,
         pages: oldData.pages.map((page: any, index: number) => {
@@ -97,6 +105,9 @@ export function ChatMessageSubscriptionProvider({
         }),
       };
     });
+    
+    // Invalidate joined chatrooms to update last message display
+    queryClient.invalidateQueries({ queryKey: ['joinedChatrooms'] });
   }, [queryClient]);
 
   const subscribeToChannel = useCallback((chatroomId: string) => {
@@ -162,9 +173,21 @@ export function ChatMessageSubscriptionProvider({
     }
   }, []);
 
+  const broadcastMessageDeletedEvent = useCallback(async (message: ChatMessage) => {
+    const channel = channelsRef.current.get(message.chatroom_id);
+    if (channel) {
+      await channel.send({
+        type: 'broadcast',
+        event: 'message_deleted',
+        payload: message,
+      });
+    }
+  }, []);
+
   const contextValue = {
     refreshSubscriptions,
     broadcastMessageCreatedEvent,
+    broadcastMessageDeletedEvent,
   };
   
   return React.createElement(

@@ -15,9 +15,9 @@ CREATE UNIQUE INDEX user_profile_username_key ON user_profile(username) WHERE us
 ALTER TABLE user_profile ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS policies
--- Users can only view their own profile
-CREATE POLICY "Users can view own profile" ON user_profile
-    FOR SELECT USING (auth.uid() = id);
+-- Allow all authenticated users to view any profile (for participant lists, etc.)
+CREATE POLICY "Authenticated users can view profiles" ON user_profile
+    FOR SELECT USING (auth.role() = 'authenticated');
 
 -- Users can update their own profile
 CREATE POLICY "Users can update own profile" ON user_profile
