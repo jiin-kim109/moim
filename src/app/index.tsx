@@ -7,7 +7,7 @@ import { fetchCurrentUserProfile } from '@hooks/useGetCurrentUserProfile';
 import { UserProfile } from '@hooks/types';
 import { prefetchRecommendedChatrooms } from '@hooks/chats/useGetRecommendedChatrooms';
 import { prefetchJoinedChatrooms, JOINED_CHATROOMS_QUERY_KEY } from '@hooks/chats/useGetJoinedChatrooms';
-import { prefetchUnreadCount } from '@hooks/chats/useGetUnreadCount';
+import { prefetchUnreadChatroomMessageCount } from '@hooks/message/useGetUnreadChatroomMessageCount';
 import { prefetchChatroomParticipants } from '@hooks/chats/useGetChatroomParticipants';
 import { prefetchChatMessages } from '@hooks/message/useGetChatMessages';
 
@@ -28,7 +28,7 @@ export default function SplashPage() {
       const prefetchPromises = joinedChatrooms.map(async (chatroom) => {
         const chatroomId = chatroom.id;
         return Promise.all([
-          prefetchUnreadCount(queryClient, chatroomId, userId),
+          prefetchUnreadChatroomMessageCount(queryClient, chatroomId, userId),
           prefetchChatroomParticipants(queryClient, chatroomId),
           prefetchChatMessages(queryClient, chatroomId),
         ]);

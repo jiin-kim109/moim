@@ -7,7 +7,7 @@ export type GetUnreadCountError = {
   code?: string;
 };
 
-export const fetchUnreadCount = async (
+export const fetchUnreadChatroomMessageCount = async (
   chatroomId: string,
   userId: string
 ): Promise<number> => {
@@ -44,20 +44,20 @@ export const fetchUnreadCount = async (
   }
 };
 
-export function useGetUnreadCount(
+export function useGetUnreadChatroomMessageCount(
   chatroomId: string,
   userId: string,
   queryOptions?: any
 ) {
   return useQuery<number, GetUnreadCountError>({
     queryKey: ["unreadCount", chatroomId],
-    queryFn: () => fetchUnreadCount(chatroomId, userId),
+    queryFn: () => fetchUnreadChatroomMessageCount(chatroomId, userId),
     enabled: !!chatroomId && !!userId,
     ...queryOptions,
   });
 }
 
-export const prefetchUnreadCount = async (
+export const prefetchUnreadChatroomMessageCount = async (
   queryClient: any,
   chatroomId: string,
   userId: string
@@ -66,6 +66,6 @@ export const prefetchUnreadCount = async (
   
   await queryClient.prefetchQuery({
     queryKey: ["unreadCount", chatroomId],
-    queryFn: () => fetchUnreadCount(chatroomId, userId),
+    queryFn: () => fetchUnreadChatroomMessageCount(chatroomId, userId),
   });
 };

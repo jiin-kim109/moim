@@ -6,7 +6,7 @@ import { Badge } from './ui/badge';
 import { ChatRoom } from '../hooks/types';
 import { formatTimeForChatRoomList } from '../lib/utils';
 import { useGetJoinedChatrooms } from '../hooks/chats/useGetJoinedChatrooms';
-import { useGetUnreadCount } from '../hooks/chats/useGetUnreadCount';
+import { useGetUnreadChatroomMessageCount } from '../hooks/message/useGetUnreadChatroomMessageCount';
 import { useGetChatMessages, useGetMultipleChatroomMessages } from '../hooks/message/useGetChatMessages';
 
 interface JoinedChatroomItem {
@@ -26,7 +26,7 @@ function JoinedChatRoomListItem({ chatRoom, userId, onPress }: JoinedChatRoomLis
     enabled: !!chatRoom.id,
   });
   
-  const { data: unreadCount = 0 } = useGetUnreadCount(chatRoom.id, userId, {
+  const { data: unreadCount = 0 } = useGetUnreadChatroomMessageCount(chatRoom.id, userId, {
     enabled: !!chatRoom.id,
   });
 

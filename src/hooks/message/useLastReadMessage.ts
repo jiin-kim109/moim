@@ -18,7 +18,7 @@ export function useGetLastReadMessage(chatroomId: string) {
     queryKey: ['lastReadMessage', chatroomId],
     queryFn: () => localStorage.getLastReadMessage(chatroomId),
     enabled: !!chatroomId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: Infinity
   });
 }
 

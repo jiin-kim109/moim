@@ -33,19 +33,26 @@ export default function HomeScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background">
       {/* Header */}
-      <View className="px-4 py-3">
+      <View className="px-5 pt-4 pb-5">
         <View className="flex-row items-center justify-between">
-          <Text className="text-2xl font-semibold text-gray-900">Browse Chats</Text>
+          <Text className="text-3xl font-bold text-primary">Moim</Text>
           <Button
             variant="ghost"
             size="icon"
             onPress={handleCreateChatRoom}
-            className="h-12 w-12 mr-1"
+            className="h-12 w-12"
           >
             <MessageCirclePlus size={32} className='text-primary' />
           </Button>
         </View>
-        <Text className="text-base text-gray-500 mt-1 opacity-80">
+      </View>
+      
+      {/* Description above chatroom list */}
+      <View className="px-4 pb-4">
+        <Text className="text-2xl font-semibold text-gray-700">
+          Browse Chats
+        </Text>
+        <Text className="text-md text-gray-500 mt-1">
           Discover and join virtual chatrooms in your area
         </Text>
       </View>
