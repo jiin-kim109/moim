@@ -1,31 +1,34 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { View, SafeAreaView, TouchableOpacity, FlatList } from 'react-native';
+import { View, SafeAreaView, TouchableOpacity, FlatList, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, Send, MapPin, Users, Edit, Trash2 } from 'lucide-react-native';
+import { ChevronLeft, Send, MapPin, Users, Edit, Trash2, Settings } from 'lucide-react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
 import { Text } from '@components/ui/text';
-import { Input } from '@components/ui/input';
 import { Button } from '@components/ui/button';
 import ChatMessage from '@components/ChatMessage';
 import JoinChatroomForm from '@components/JoinChatroomForm';
-import ChatroomSideMenu from '@components/ChatroomSideMenu';
+
 import { useGetChatroom } from '@hooks/chats/useGetChatroom';
-import { useGetChatMessages } from '@hooks/chats/useGetChatMessages';
+import { useGetChatMessages } from '@hooks/message/useGetChatMessages';
 import { useGetChatroomParticipants } from '@hooks/chats/useGetChatroomParticipants';
 import { useSendChatMessage } from '@hooks/message/useSendChatMessage';
 import { useSaveLastReadMessage, useGetLastReadMessage } from '@hooks/message/useLastReadMessage';
+import { useDeleteChatMessage } from '@hooks/message/useDeleteChatMessage';
+import { useHideChatMessage } from '@hooks/message/useHideChatMessage';
 import { ChatMessage as ChatMessageType } from '@hooks/types';
 import { useGetCurrentUserProfile } from '@hooks/useGetCurrentUserProfile';
+import { useDebouncedFunction } from '@lib/utils';
+import localStorage from '@lib/localstorage';
+import { Textarea } from '@components/ui/textarea';
 
 export default function ChatroomScreen() {
   const router = useRouter();
   const { chatroom_id } = useLocalSearchParams();
   const [message, setMessage] = useState('');
-  const [isSideMenuVisible, setIsSideMenuVisible] = useState(false);
+
   const [selectedMessage, setSelectedMessage] = useState<ChatMessageType | null>(null);
   
-  // Bottom sheet ref and snap points
   const bottomSheetRef = useRef<BottomSheet>(null);
   
   const { data: userProfile, isLoading: userProfileLoading } = useGetCurrentUserProfile();
@@ -37,10 +40,20 @@ export default function ChatroomScreen() {
   const { data: lastReadMessage } = useGetLastReadMessage(chatroom_id as string);
   const sendMessageMutation = useSendChatMessage();
   const saveLastReadMessageMutation = useSaveLastReadMessage();
+  const deleteMessageMutation = useDeleteChatMessage();
+  const hideMessageMutation = useHideChatMessage();
+  const [hiddenMessageIds, setHiddenMessageIds] = useState<string[]>([]);
 
   const isParticipant = participants?.find(
     (participant) => participant.user_id === currentUserId
   );
+
+  const isHost = chatroom?.host_id === currentUserId;
+
+  // Pre-create debounced navigation handlers (must be called at top-level, not during render)
+  const handleGoBack = useDebouncedFunction(() => router.back());
+  const handleOpenParticipants = useDebouncedFunction(() => router.push(`/chatroom/${chatroom_id}/participants`));
+  const handleOpenSettings = useDebouncedFunction(() => router.push(`/chatroom/${chatroom_id}/settings`));
 
   // Handle long press on chat message
   const handleMessageLongPress = useCallback((message: ChatMessageType) => {
@@ -48,15 +61,78 @@ export default function ChatroomScreen() {
     bottomSheetRef.current?.expand();
   }, []);
 
+  // Load hidden message IDs on mount
+  useEffect(() => {
+    const loadHiddenMessageIds = async () => {
+      if (chatroom_id) {
+        const hiddenIds = await localStorage.getHiddenMessageIds(chatroom_id as string);
+        setHiddenMessageIds(hiddenIds);
+      }
+    };
+    loadHiddenMessageIds();
+  }, [chatroom_id]);
+
   // Handle delete message
-  const handleDeleteMessage = useCallback(() => {
-    if (selectedMessage) {
-      console.log('Delete message:', selectedMessage.id);
-      // TODO: Implement delete message functionality
-      bottomSheetRef.current?.close();
-      setSelectedMessage(null);
+  const handleDeleteMessage = useCallback(async () => {
+    if (!selectedMessage || !chatroom_id) return;
+
+    if (isHost || selectedMessage.sender_id === currentUserId) {
+      Alert.alert(
+        'Delete Message',
+        'This message will be deleted for everyone in the chatroom. This action cannot be undone.',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await deleteMessageMutation.mutateAsync({
+                  message_id: selectedMessage.id,
+                  chatroom_id: chatroom_id as string,
+                });
+                bottomSheetRef.current?.close();
+                setSelectedMessage(null);
+              } catch (error) {
+                console.error('Failed to delete message:', error);
+              }
+            },
+          },
+        ]
+      );
+    } else {
+      Alert.alert(
+        'Hide Message',
+        'This message will only be hidden for you. Other participants will still see it.',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Hide',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await hideMessageMutation.mutateAsync({
+                  message_id: selectedMessage.id,
+                  chatroom_id: chatroom_id as string,
+                });
+                setHiddenMessageIds(prev => [...prev, selectedMessage.id]);
+                bottomSheetRef.current?.close();
+                setSelectedMessage(null);
+              } catch (error) {
+                console.error('Failed to hide message:', error);
+              }
+            },
+          },
+        ]
+      );
     }
-  }, [selectedMessage]);
+  }, [selectedMessage, chatroom_id, isHost, currentUserId, deleteMessageMutation, hideMessageMutation]);
 
   // Handle edit message
   const handleEditMessage = useCallback(() => {
@@ -124,10 +200,14 @@ export default function ChatroomScreen() {
     }
 
     const messages = (messagesData?.pages?.[0] as any)?.messages || [];
+    
+    const filteredMessages = messages.filter((message: ChatMessageType) => 
+      !hiddenMessageIds.includes(message.id)
+    );
 
     return (
       <FlatList
-        data={messages}
+        data={filteredMessages}
         keyExtractor={(item: ChatMessageType) => item.id}
         renderItem={({ item }: { item: ChatMessageType }) => (
           <ChatMessage 
@@ -143,118 +223,101 @@ export default function ChatroomScreen() {
         }}
         inverted
         showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View className="flex-1 justify-end p-4">
-            <Text className="text-center text-gray-500 mb-4">
-              No messages yet. Start the conversation!
-            </Text>
-          </View>
-        }
       />
     );
   };
 
   return (
     <GestureHandlerRootView className="flex-1 bg-orange-50">
-      <TouchableOpacity onPress={handleCloseBottomSheet} activeOpacity={1} className="flex-1 mt-16">
-        {/* Header */}
-        <View className="flex-row items-center px-4 py-2 bg-orange-50">
-          <TouchableOpacity
-            onPress={() => router.back()}
-            className="mr-3 p-2 -ml-2"
-          >
-            <ChevronLeft size={24} color="#000" />
-          </TouchableOpacity>
+      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <TouchableOpacity onPress={handleCloseBottomSheet} activeOpacity={1} className="flex-1 mt-16">
+          {/* Header */}
+          <View className="flex-row items-center px-4 py-2 bg-orange-50">
+            <TouchableOpacity
+              onPress={handleGoBack}
+              className="mr-3 p-2 -ml-2"
+            >
+              <ChevronLeft size={24} color="#000" />
+            </TouchableOpacity>
 
-          <View className="flex-1">
-            <View className="flex-row items-center gap-3">
-              <Text className="text-xl font-semibold text-gray-900">
-                {chatroom?.title}
-              </Text>
-              <Text className="text-lg text-gray-500">
-                {chatroom?.participant_count || 0}
-              </Text>
-            </View>
-
-            {/* Location */}
-            {chatroom?.address && (
-              <View className="flex-row items-center gap-1 mb-1">
-                <MapPin size={12} color="#6B7280" />
-                <Text className="text-base text-gray-500">
-                  {chatroom.address.place_name || chatroom.address.city}
+            <View className="flex-1">
+              <View className="flex-row items-center gap-3">
+                <Text className="text-xl font-semibold text-gray-900">
+                  {chatroom?.title}
+                </Text>
+                <Text className="text-lg text-gray-500">
+                  {participants?.length || 0}
                 </Text>
               </View>
+
+              {/* Location */}
+              {chatroom?.address && (
+                <View className="flex-row items-center gap-1 mb-1">
+                  <MapPin size={12} color="#6B7280" />
+                  <Text className="text-base text-gray-500">
+                    {chatroom.address.place_name}
+                  </Text>
+                </View>
+              )}
+            </View>
+            
+            {/* Action Button */}
+            {isHost && (
+              <TouchableOpacity
+                onPress={handleOpenSettings}
+                className="p-2 mr-1"
+              >
+                <Settings size={24} color="#000" />
+              </TouchableOpacity>
             )}
+            <TouchableOpacity
+              onPress={handleOpenParticipants}
+              className="p-2 -mr-2"
+            >
+              <Users size={24} color="#000" />
+            </TouchableOpacity>
           </View>
-          
-          {/* Participants Button */}
-          <TouchableOpacity
-            onPress={() => setIsSideMenuVisible(true)}
-            className="p-2 -mr-2"
-          >
-            <Users size={24} color="#000" />
-          </TouchableOpacity>
-        </View>
 
-        {/* Chat Messages Area */}
-        <View className="flex-1 bg-orange-50">
-          {renderChatContent()}
-        </View>
-      </TouchableOpacity>
-      
-      {/* Message Input Area */}
-      <View className="px-4 pb-12 py-4 bg-white border-t border-gray-200">
-        <View className="flex-row items-center px-2 gap-3">
-          <View className="flex-1">
-            <Input
-              value={message}
-              onChangeText={setMessage}
-              placeholder="Type a message..."
-              multiline
-              editable={!!isParticipant}
-              className="bg-gray-100 border-0 rounded-2xl px-4 py-3 min-h-12 max-h-32 text-base"
-              style={{
-                textAlignVertical: 'center',
-              }}
-            />
+          {/* Chat Messages Area */}
+          <View className="flex-1 bg-orange-50">
+            {renderChatContent()}
           </View>
-          
-          <Button
-            onPress={handleSend}
-            disabled={!isParticipant || !message.trim()}
-            size="icon"
-            className={`w-12 h-12 rounded-full ${
-              message.trim() ? 'bg-orange-500' : 'bg-gray-300'
-            }`}
-          >
-            <Send 
-              size={20} 
-              color="white" 
-              style={{ marginLeft: 2 }} // Slight offset to center the icon
-            />
-          </Button>
+        </TouchableOpacity>
+        
+        {/* Message Input Area */}
+        <View className="px-4 pb-12 py-4 bg-white border-t border-gray-200">
+          <View className="flex-row items-center px-2 gap-3">
+            <View className="flex-1">
+              <Textarea
+                value={message}
+                onChangeText={setMessage}
+                placeholder="Type a message..."
+                multiline
+                editable={!!isParticipant}
+                className="bg-gray-100 border-0 rounded-2xl px-4 py-3 min-h-12 max-h-32 text-base"
+                style={{
+                  textAlignVertical: 'center',
+                }}
+              />
+            </View>
+            
+            <Button
+              onPress={handleSend}
+              disabled={!isParticipant || !message.trim()}
+              size="icon"
+              className={`w-12 h-12 rounded-full ${
+                message.trim() ? 'bg-orange-500' : 'bg-gray-300'
+              }`}
+            >
+              <Send 
+                size={20} 
+                color="white" 
+                style={{ marginLeft: 2 }}
+              />
+            </Button>
+          </View>
         </View>
-      </View>
-
-      {/* Side Menu */}
-      <ChatroomSideMenu
-        isVisible={isSideMenuVisible}
-        onClose={() => setIsSideMenuVisible(false)}
-        chatroomId={chatroom_id as string}
-        hostId={chatroom?.host_id || ''}
-        onKickParticipant={(userId) => {
-          // TODO: Implement kick functionality
-          console.log('Kick participant:', userId);
-        }}
-        onBanParticipant={(userId) => {
-          // TODO: Implement ban functionality
-          console.log('Ban participant:', userId);
-        }}
-        onChangeNickname={(userId) => {
-          // TODO: Implement nickname change functionality
-          console.log('Change nickname for:', userId);
-        }}
-      />
+      </KeyboardAvoidingView>
 
       {/* Bottom Sheet for Message Options */}
       <BottomSheet

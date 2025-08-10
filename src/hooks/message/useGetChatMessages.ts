@@ -1,6 +1,7 @@
 import {
   useInfiniteQuery,
   QueryClient,
+  useQueries,
 } from "@tanstack/react-query";
 import supabase from '../../lib/supabase';
 import { ChatMessage } from '../types';
@@ -30,6 +31,7 @@ export const fetchChatMessages = async (
     .from('chat_messages')
     .select(`
       *,
+      sender:user_profile(*),
       chatroom!inner(
         chatroom_participants!inner(*)
       )
@@ -86,3 +88,30 @@ export function useGetChatMessages(
     ...queryOptions,
   });
 }
+
+export const prefetchChatMessages = async (
+  queryClient: QueryClient,
+  chatroomId: string
+) => {
+  if (!chatroomId) return;
+  
+  await queryClient.prefetchInfiniteQuery({
+    queryKey: ["chatMessages", chatroomId],
+    queryFn: ({ pageParam }) => fetchChatMessages(chatroomId, pageParam as string | undefined),
+    initialPageParam: undefined,
+  });
+};
+
+export function useGetMultipleChatroomMessages(chatroomIds: string[]) {
+  const messageQueries = useQueries({
+    queries: chatroomIds.map(chatroomId => ({
+      queryKey: ["chatMessages", chatroomId],
+      queryFn: () => fetchChatMessages(chatroomId, undefined),
+      enabled: !!chatroomId,
+      refetchOnWindowFocus: false,
+    })),
+  });
+
+  return messageQueries;
+}
+

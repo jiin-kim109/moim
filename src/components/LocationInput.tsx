@@ -41,8 +41,8 @@ export default function LocationInput({
 
   // Update searchText when value changes externally
   useEffect(() => {
-    if (value?.place_name) {
-      setSearchText(value.place_name);
+    if (value?.address) {
+      setSearchText(value.address);
     }
   }, [value]);
 
@@ -79,7 +79,7 @@ export default function LocationInput({
   const handleLocationSelect = (suggestion: MapBoxSuggestion) => {
     const selectedAddress = suggestion.address;
     onLocationChange(selectedAddress);
-    setSearchText(selectedAddress.place_name || "");
+    setSearchText(selectedAddress.address || "");
     setShowSuggestions(false);
     clearSearch();
   };
@@ -87,7 +87,7 @@ export default function LocationInput({
   const handleSearchTextChange = (text: string) => {
     setSearchText(text);
     setShowSuggestions(true);
-    if (text !== value?.place_name) {
+    if (text !== value?.address) {
       onLocationChange(null);
       search(text);
     }
@@ -98,8 +98,8 @@ export default function LocationInput({
     setTimeout(() => {
       setShowSuggestions(false);
       // Roll back to current value if no selection was made
-      if (value?.place_name) {
-        setSearchText(value.place_name);
+      if (value?.address) {
+        setSearchText(value.address);
       } else {
         setSearchText("");
       }
@@ -137,7 +137,7 @@ export default function LocationInput({
                   color="#6B7280"
                 />
                 <Text style={styles.suggestionText}>
-                  {suggestion.address.place_name}
+                  {suggestion.address.address}
                 </Text>
               </Pressable>
             ))}

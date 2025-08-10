@@ -22,8 +22,6 @@ export type CreateChatroomData = {
   address: Address;
 };
 
-
-
 export const createChatroom = async (
   data: CreateChatroomData
 ): Promise<ChatRoom> => {

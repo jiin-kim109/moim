@@ -128,9 +128,16 @@ export default function ChatMessage({ message, isCurrentUser = false, onLongPres
           )}
           <View className={`flex-row items-end ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
             {isCurrentUser && (
-              <Text className="text-sm text-gray-400 mr-2">
-                {formatTime(message.created_at)}
-              </Text>
+              <View className="items-end mr-2">
+                {message.is_edited && (
+                  <Text className="text-xs italic text-gray-400">
+                    edited
+                  </Text>
+                )}
+                <Text className="text-sm text-gray-400">
+                  {formatTime(message.created_at)}
+                </Text>
+              </View>
             )}
             <TouchableOpacity
               onLongPress={handleLongPress}
@@ -146,21 +153,19 @@ export default function ChatMessage({ message, isCurrentUser = false, onLongPres
                 <Text className={`text-base ${isCurrentUser ? 'text-white' : 'text-gray-900'}`}>
                   {message.message}
                 </Text>
-                {message.is_edited && (
-                  <Text 
-                    className={`text-sm mt-1 italic ${
-                      isCurrentUser ? 'text-orange-100' : 'text-gray-400'
-                    }`}
-                  >
-                    edited
-                  </Text>
-                )}
               </View>
             </TouchableOpacity>
             {!isCurrentUser && (
-              <Text className="text-sm text-gray-400 ml-2">
-                {formatTime(message.created_at)}
-              </Text>
+              <View className="items-start ml-2">
+                {message.is_edited && (
+                  <Text className="text-xs italic text-gray-400">
+                    edited
+                  </Text>
+                )}
+                <Text className="text-sm text-gray-400">
+                  {formatTime(message.created_at)}
+                </Text>
+              </View>
             )}
           </View>
         </View>

@@ -56,3 +56,16 @@ export function useGetUnreadCount(
     ...queryOptions,
   });
 }
+
+export const prefetchUnreadCount = async (
+  queryClient: any,
+  chatroomId: string,
+  userId: string
+) => {
+  if (!chatroomId || !userId) return;
+  
+  await queryClient.prefetchQuery({
+    queryKey: ["unreadCount", chatroomId],
+    queryFn: () => fetchUnreadCount(chatroomId, userId),
+  });
+};

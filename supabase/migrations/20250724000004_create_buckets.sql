@@ -19,7 +19,8 @@ VALUES (
 );
 
 -- Enable RLS on storage.objects
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+-- Skipped, because storage.objects by default has RLS enabled
 
 -- Policy to allow authenticated users to upload thumbnails
 CREATE POLICY "Allow authenticated users to upload chatroom thumbnails" ON storage.objects

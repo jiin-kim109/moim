@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, TouchableOpacity, ImageBackground } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
 import Modal from 'react-native-modal';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from './ui/text';
+import { Image } from './ui/image';
 import { X, Flag, MapPin, User } from 'lucide-react-native';
 import { ChatRoom } from '../hooks/types';
 
@@ -53,11 +54,12 @@ export default function ChatRoomDetail({
           </View>
 
           {/* Thumbnail background section */}
-          <ImageBackground
-            source={chatRoom.thumbnail_url ? { uri: chatRoom.thumbnail_url } : require('@assets/chatroom-thumbnail-default.png')}
-            className="h-96 justify-end"
-            resizeMode="cover"
-          >
+          <View className="h-96 relative">
+            <Image
+              source={chatRoom.thumbnail_url ? { uri: chatRoom.thumbnail_url } : require('@assets/chatroom-thumbnail-default.png')}
+              className="absolute inset-0 w-full h-full"
+            />
+            
             {/* Smooth gradient overlay */}
             <LinearGradient
               colors={['transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.8)']}
@@ -72,7 +74,7 @@ export default function ChatRoomDetail({
             />
             
             {/* Content over image */}
-            <View className="p-6 pb-8">
+            <View className="p-6 pb-8 absolute bottom-0 left-0 right-0">
               <Text className="text-2xl font-bold text-white mb-1">
                 {chatRoom.title}
               </Text>
@@ -102,7 +104,7 @@ export default function ChatRoomDetail({
                 </Text>
               )}
             </View>
-          </ImageBackground>
+          </View>
 
           {/* Action buttons - fixed at bottom */}
           <View className="mt-auto flex-row">

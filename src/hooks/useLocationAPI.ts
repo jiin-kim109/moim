@@ -80,7 +80,7 @@ export function useLocationAPI(options: LocationQueryOptions) {
         id: feature.id,
         place_type: feature.place_type,
         address: {
-          place_name: feature.place_name,
+          place_name: feature.text,
           address: feature.place_name,
           city: feature.text,
           state: getContextValue(['region']),

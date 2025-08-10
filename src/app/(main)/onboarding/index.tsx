@@ -66,10 +66,12 @@ function UsernameStep({ form }: StepProps) {
               <FormLabel>Username</FormLabel>
               <FormControl>
                 <Input
-                  onChangeText={field.onChange}
+                  value={field.value}
+                  onChangeText={(text) => field.onChange(text.toLowerCase())}
+                  onBlur={field.onBlur}
                   placeholder="Enter your username"
+                  autoCapitalize="none"
                   error={!!fieldState.error}
-                  {...field}
                 />
               </FormControl>
               <FormMessage>{fieldState.error?.message}</FormMessage>
@@ -177,7 +179,11 @@ export default function OnboardingScreen() {
       const isValid = await form.trigger('username');
       if (isValid) {
         // Check if username already exists
-        const username = form.getValues('username');
+        const rawUsername = form.getValues('username') || '';
+        const username = rawUsername.toLowerCase();
+        if (rawUsername !== username) {
+          form.setValue('username', username, { shouldValidate: false });
+        }
         const existingUser = await findUserByUsername(username);
         if (existingUser) {
           form.setError('username', {
@@ -199,13 +205,14 @@ export default function OnboardingScreen() {
 
   const handleSubmit = () => {
     form.handleSubmit(async (data) => {
+      const username = (data.username || '').toLowerCase();
       await updateUser.mutateAsync({
-        username: data.username,
+        username,
         is_onboarded: true,
         address: data.location || undefined,
       });
 
-      router.replace('/home');
+      router.replace('/browse');
     })();
   };
 

@@ -108,6 +108,8 @@ export function ChatMessageSubscriptionProvider({
     
     // Invalidate joined chatrooms to update last message display
     queryClient.invalidateQueries({ queryKey: ['joinedChatrooms'] });
+    // Invalidate chatroom participants to update participant in case it's user in/out of the chatroom
+    queryClient.invalidateQueries({ queryKey: ['chatroomParticipants', chatroomId] });
   }, [queryClient]);
 
   const subscribeToChannel = useCallback((chatroomId: string) => {

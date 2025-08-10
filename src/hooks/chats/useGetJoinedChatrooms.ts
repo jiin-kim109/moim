@@ -12,6 +12,8 @@ export type JoinedChatroomsError = {
   code?: string;
 };
 
+export const JOINED_CHATROOMS_QUERY_KEY = ["joinedChatrooms"] as const;
+
 export const fetchJoinedChatrooms = async (userId: string): Promise<ChatRoom[]> => {
   if (!userId) {
     return [];
@@ -43,9 +45,22 @@ export function useGetJoinedChatrooms(
   queryOptions?: Partial<UseQueryOptions<ChatRoom[], JoinedChatroomsError>>,
 ): UseQueryResult<ChatRoom[], JoinedChatroomsError> {
   return useQuery<ChatRoom[], JoinedChatroomsError>({
-    queryKey: ["joinedChatrooms"],
+    queryKey: JOINED_CHATROOMS_QUERY_KEY,
     queryFn: () => fetchJoinedChatrooms(userId),
     enabled: !!userId,
+    staleTime: Infinity,
     ...queryOptions,
   });
-} 
+}
+
+export const prefetchJoinedChatrooms = async (
+  queryClient: any,
+  userId: string
+) => {
+  if (!userId) return;
+  
+  await queryClient.prefetchQuery({
+    queryKey: JOINED_CHATROOMS_QUERY_KEY,
+    queryFn: () => fetchJoinedChatrooms(userId),
+  });
+}; 

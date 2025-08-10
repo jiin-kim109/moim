@@ -1,12 +1,43 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import supabase from '@lib/supabase';
 import { fetchCurrentUserProfile } from '@hooks/useGetCurrentUserProfile';
+import { UserProfile } from '@hooks/types';
+import { prefetchRecommendedChatrooms } from '@hooks/chats/useGetRecommendedChatrooms';
+import { prefetchJoinedChatrooms, JOINED_CHATROOMS_QUERY_KEY } from '@hooks/chats/useGetJoinedChatrooms';
+import { prefetchUnreadCount } from '@hooks/chats/useGetUnreadCount';
+import { prefetchChatroomParticipants } from '@hooks/chats/useGetChatroomParticipants';
+import { prefetchChatMessages } from '@hooks/message/useGetChatMessages';
 
 export default function SplashPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(true);
+
+  async function initializeApp(userId: string): Promise<UserProfile | null> {
+    await Promise.all([
+      prefetchRecommendedChatrooms(queryClient, userId),
+      prefetchJoinedChatrooms(queryClient, userId),
+    ]);
+
+    const joinedChatrooms = queryClient.getQueryData(JOINED_CHATROOMS_QUERY_KEY) as any[];
+
+    if (joinedChatrooms && joinedChatrooms.length > 0) {
+      const prefetchPromises = joinedChatrooms.map(async (chatroom) => {
+        const chatroomId = chatroom.id;
+        return Promise.all([
+          prefetchUnreadCount(queryClient, chatroomId, userId),
+          prefetchChatroomParticipants(queryClient, chatroomId),
+          prefetchChatMessages(queryClient, chatroomId),
+        ]);
+      });
+      await Promise.all(prefetchPromises);
+    }
+
+    return await fetchCurrentUserProfile();
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -21,11 +52,13 @@ export default function SplashPage() {
           return;
         }
 
-        const userProfile = await fetchCurrentUserProfile();
+        const userProfile = await initializeApp(session.user.id);
+        if (!mounted) return;
+
         if (userProfile && !userProfile.is_onboarded) {
           router.replace('/onboarding');
         } else {
-          router.replace('/(main)/(tabs)/home');
+          router.replace('/chats');
         }
       } catch (error) {
         console.error('Auth check error:', error);
@@ -38,7 +71,7 @@ export default function SplashPage() {
     return () => {
       mounted = false;
     };
-  }, [router]);
+  }, [router, queryClient]);
 
   if (!isLoading) {
     return null;

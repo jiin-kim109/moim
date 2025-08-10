@@ -67,4 +67,17 @@ export function useGetRecommendedChatrooms(
     initialPageParam: 1,
     ...queryOptions,
   });
-} 
+}
+
+export const prefetchRecommendedChatrooms = async (
+  queryClient: QueryClient,
+  userId: string
+) => {
+  if (!userId) return;
+  
+  await queryClient.prefetchInfiniteQuery({
+    queryKey: ["recommendedChatrooms", userId],
+    queryFn: ({ pageParam }) => fetchRecommendedChatrooms(userId, pageParam as number || 1),
+    initialPageParam: 1,
+  });
+}; 

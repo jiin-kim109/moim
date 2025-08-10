@@ -1,5 +1,6 @@
 import * as AvatarPrimitive from '@rn-primitives/avatar';
 import * as React from 'react';
+import { Image } from './image';
 import { cn } from '@lib/utils';
 
 function Avatar({
@@ -18,12 +19,19 @@ function Avatar({
 
 function AvatarImage({
   className,
+  source,
   ...props
-}: AvatarPrimitive.ImageProps & {
-  ref?: React.RefObject<AvatarPrimitive.ImageRef>;
-}) {
+}: {
+  className?: string;
+  source: any;
+  ref?: React.RefObject<any>;
+} & Omit<React.ComponentProps<typeof Image>, 'source'>) {
   return (
-    <AvatarPrimitive.Image className={cn('aspect-square h-full w-full', className)} {...props} />
+    <Image
+      source={source}
+      className={cn('aspect-square h-full w-full', className)}
+      {...props}
+    />
   );
 }
 

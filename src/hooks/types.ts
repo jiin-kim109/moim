@@ -35,6 +35,8 @@ export interface ChatRoom {
   created_at: string;
   participant_count: number;
   address: Address | null;
+  latest_message_id: string | null;
+  latest_message: ChatMessage | null;
 }
 
 export interface ChatMessage {
@@ -51,3 +53,13 @@ export interface ChatMessage {
   sender_nickname: string;
 }
 
+export type ReportType = 'chatroom' | 'message' | 'user';
+
+export type Report = {
+  id: string;
+  reporter_id: string;
+  report_type: ReportType;
+  reason: string | null;
+  payload: Record<string, unknown>;
+  created_at: string;
+};

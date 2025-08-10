@@ -39,8 +39,10 @@ CREATE POLICY "All users can view chatrooms" ON chatroom
     FOR SELECT USING (true);
 
 -- Users can update chatrooms they host
+-- Note: This policy allows current hosts to transfer ownership
+-- WITH CHECK clause: allows any valid host_id change (including transfers)
 CREATE POLICY "Hosts can update their chatrooms" ON chatroom
-    FOR UPDATE USING (host_id = auth.uid());
+    FOR UPDATE USING (host_id = auth.uid()) WITH CHECK (true);
 
 -- Users can create chatrooms
 CREATE POLICY "Users can create chatrooms" ON chatroom

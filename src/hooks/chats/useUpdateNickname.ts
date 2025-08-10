@@ -2,6 +2,7 @@ import {
   useMutation,
   UseMutationOptions,
   UseMutationResult,
+  useQueryClient,
 } from "@tanstack/react-query";
 import supabase from '../../lib/supabase';
 
@@ -58,8 +59,12 @@ export const updateNickname = async (
 export function useUpdateNickname(
   mutationOptions?: Partial<UseMutationOptions<UpdateNicknameResult, UpdateNicknameError, UpdateNicknameData>>,
 ): UseMutationResult<UpdateNicknameResult, UpdateNicknameError, UpdateNicknameData> {
+  const queryClient = useQueryClient();
   return useMutation<UpdateNicknameResult, UpdateNicknameError, UpdateNicknameData>({
     mutationFn: updateNickname,
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["chatroomParticipants", variables.chatroom_id] });
+    },
     ...mutationOptions,
   });
 } 

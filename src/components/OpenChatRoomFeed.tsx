@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { FlatList, View, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { FlatList, View, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { Image } from './ui/image';
 import { Text } from './ui/text';
 import { User, MapPin } from 'lucide-react-native';
 import { ChatRoom } from '../hooks/types';
 import ChatRoomDetail from './ChatRoomDetail';
 import { useGetRecommendedChatrooms, RecommendedChatroomsPage } from '../hooks/chats/useGetRecommendedChatrooms';
 import { useGetCurrentUserProfile } from '../hooks/useGetCurrentUserProfile';
+import { useRouter } from 'expo-router';
 
 interface OpenChatRoomFeedItemProps {
   chatRoom: ChatRoom;
@@ -26,8 +28,8 @@ function OpenChatRoomFeedItem({ chatRoom, onPress }: OpenChatRoomFeedItemProps) 
       {/* Thumbnail */}
       <Image 
         source={chatRoom.thumbnail_url ? { uri: chatRoom.thumbnail_url } : require('@assets/chatroom-thumbnail-default.png')}
-        className="w-24 h-24 pt-1 pl-1 pr-4 pb-5 rounded-3xl ml-1 mr-2 flex-shrink-0"
-        resizeMode="cover"
+        className="w-20 h-20 py-6 px-4 rounded-3xl ml-2 mr-6 flex-shrink-0"
+        contentFit='cover'
       />
       
       <View className="flex-1 gap-1">
@@ -64,6 +66,7 @@ interface OpenChatRoomFeedProps {
 }
 
 export default function OpenChatRoomFeed({ onChatRoomPress, onChatRoomJoin }: OpenChatRoomFeedProps) {
+  const router = useRouter();
   const { data: userProfile } = useGetCurrentUserProfile();
   const currentUserId = userProfile?.id;
   const [selectedChatRoom, setSelectedChatRoom] = useState<ChatRoom | null>(null);
@@ -100,9 +103,18 @@ export default function OpenChatRoomFeed({ onChatRoomPress, onChatRoomJoin }: Op
   };
 
   const handleReportRoom = (chatRoom: ChatRoom) => {
-    // TODO: Implement report room logic
-    console.log('Reporting room:', chatRoom.title);
     setDetailVisible(false);
+    router.push({
+      pathname: '/report',
+      params: {
+        type: 'chatroom',
+        chatroom_id: chatRoom.id,
+        payload: JSON.stringify({
+          chatroom_id: chatRoom.id,
+          title: chatRoom.title,
+        }),
+      },
+    });
   };
 
   const handleCloseDetail = () => {

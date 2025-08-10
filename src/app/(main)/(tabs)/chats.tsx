@@ -3,23 +3,17 @@ import { View, SafeAreaView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Text } from '@components/ui/text';
 import JoinedChatRoomList from '@components/JoinedChatRoomList';
-import { ChatRoom } from '@hooks/types';
 import { useGetCurrentUserProfile } from '@hooks/useGetCurrentUserProfile';
 import { useDebouncedFunction } from '@lib/utils';
 
-interface JoinedChatroomItem {
-  chatroom: ChatRoom;
-  lastMessage: string;
-  unread_count: number;
-}
 
 export default function ChatsScreen() {
   const router = useRouter();
   const { data: userProfile } = useGetCurrentUserProfile();
   const currentUserId = userProfile?.id;
 
-  const handleChatRoomPress = useDebouncedFunction((chatRoomItem: JoinedChatroomItem) => {
-    router.push(`/chatroom/${chatRoomItem.chatroom.id}`);
+  const handleChatRoomPress = useDebouncedFunction(chatroomItem => {
+    router.push(`/chatroom/${chatroomItem.chatroom.id}`);
   });
 
   if (!currentUserId) {

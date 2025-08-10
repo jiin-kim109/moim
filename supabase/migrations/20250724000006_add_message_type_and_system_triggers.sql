@@ -99,7 +99,7 @@ BEGIN
             VALUES (
                 NEW.id,
                 NEW.host_id,
-                'Chatroom host changed to ' || new_host_nickname,
+                new_host_nickname || ' is now the host of the chatroom!',
                 'system_message'
             )
             RETURNING * INTO new_message;
@@ -123,13 +123,44 @@ CREATE TRIGGER participant_exit_system_message
     AFTER DELETE ON chatroom_participants
     FOR EACH ROW EXECUTE FUNCTION add_participant_exit_message();
 
+-- Function to add system message when participant nickname changes
+CREATE OR REPLACE FUNCTION add_nickname_change_message()
+RETURNS TRIGGER AS $$
+DECLARE
+    new_message chat_messages%ROWTYPE;
+BEGIN
+    -- Only trigger if nickname actually changed
+    IF OLD.nickname != NEW.nickname THEN
+        -- Insert system message about nickname change
+        INSERT INTO chat_messages (chatroom_id, sender_id, message, message_type)
+        VALUES (
+            NEW.chatroom_id,
+            NEW.user_id,
+            OLD.nickname || ' changed nickname to ' || NEW.nickname,
+            'system_message'
+        )
+        RETURNING * INTO new_message;
+        
+        PERFORM broadcast_system_message(new_message, NEW.chatroom_id);
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Create trigger for host change messages
 CREATE TRIGGER host_change_system_message
     AFTER UPDATE ON chatroom
     FOR EACH ROW EXECUTE FUNCTION add_host_change_message();
+
+-- Create trigger for nickname change messages
+CREATE TRIGGER nickname_change_system_message
+    AFTER UPDATE ON chatroom_participants
+    FOR EACH ROW EXECUTE FUNCTION add_nickname_change_message();
 
 -- Add comments to document the functions and triggers
 COMMENT ON FUNCTION broadcast_system_message(chat_messages, TEXT) IS 'Broadcasts system message to specific chatroom channel via realtime';
 COMMENT ON FUNCTION add_participant_join_message() IS 'Automatically adds system message when a participant joins a chatroom';
 COMMENT ON FUNCTION add_participant_exit_message() IS 'Automatically adds system message when a participant leaves a chatroom';
 COMMENT ON FUNCTION add_host_change_message() IS 'Automatically adds system message when chatroom host changes';
+COMMENT ON FUNCTION add_nickname_change_message() IS 'Automatically adds system message when a participant changes their nickname';

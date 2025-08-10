@@ -41,13 +41,15 @@ CREATE POLICY "Participants can send messages" ON chat_messages
         )
     );
 
--- Only message senders can update their own messages
-CREATE POLICY "Senders can update their messages" ON chat_messages
+-- Only message senders can update their own messages, or chatroom hosts can update any message
+CREATE POLICY "Senders can update their messages or hosts can update any message" ON chat_messages
     FOR UPDATE USING (
         sender_id = auth.uid()
+        OR chatroom_id IN (
+            SELECT id FROM chatroom 
+            WHERE host_id = auth.uid()
+        )
     );
-
-
 
 -- Trigger to automatically update updated_at timestamp
 CREATE TRIGGER update_chat_messages_updated_at

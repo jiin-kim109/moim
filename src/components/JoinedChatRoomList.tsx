@@ -1,12 +1,13 @@
 import React from 'react';
-import { FlatList, View, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { FlatList, View, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { Image } from './ui/image';
 import { Text } from './ui/text';
 import { Badge } from './ui/badge';
 import { ChatRoom } from '../hooks/types';
 import { formatTimeForChatRoomList } from '../lib/utils';
 import { useGetJoinedChatrooms } from '../hooks/chats/useGetJoinedChatrooms';
 import { useGetUnreadCount } from '../hooks/chats/useGetUnreadCount';
-import { useGetChatMessages } from '../hooks/chats/useGetChatMessages';
+import { useGetChatMessages, useGetMultipleChatroomMessages } from '../hooks/message/useGetChatMessages';
 
 interface JoinedChatroomItem {
   chatroom: ChatRoom;
@@ -45,8 +46,8 @@ function JoinedChatRoomListItem({ chatRoom, userId, onPress }: JoinedChatRoomLis
       {/* Thumbnail */}
       <Image 
         source={chatroomItem.chatroom.thumbnail_url ? { uri: chatroomItem.chatroom.thumbnail_url } : require('@assets/chatroom-thumbnail-default.png')}
-        className="w-16 h-16 rounded-3xl mr-4 flex-shrink-0"
-        resizeMode="cover"
+        className="w-20 h-20 rounded-3xl mr-4 flex-shrink-0"
+        contentFit='cover'
       />
       
       {/* Content */}
@@ -98,6 +99,32 @@ interface JoinedChatRoomListProps {
 
 export default function JoinedChatRoomList({ userId, onChatRoomPress }: JoinedChatRoomListProps) {
   const { data: joinedChatrooms, isLoading, refetch } = useGetJoinedChatrooms(userId);
+  
+
+  const chatroomIds = React.useMemo(() => 
+    joinedChatrooms?.map(room => room.id) || [], 
+    [joinedChatrooms]
+  );
+  
+  const messageQueries = useGetMultipleChatroomMessages(chatroomIds);
+  
+  // Sort chatrooms by latest message timestamp
+  const sortedChatrooms = React.useMemo(() => {
+    if (!joinedChatrooms) return [];
+    
+    return [...joinedChatrooms].sort((a, b) => {
+      const [messagesA, messagesB] = [a, b].map(room => {
+        const idx = joinedChatrooms.findIndex(r => r.id === room.id);
+        return (messageQueries[idx]?.data as any)?.pages?.[0]?.messages?.[0]?.created_at;
+      });
+      
+      if (!messagesA && !messagesB) return 0;
+      if (!messagesA) return 1;
+      if (!messagesB) return -1;
+      
+      return new Date(messagesB).getTime() - new Date(messagesA).getTime();
+    });
+  }, [joinedChatrooms, messageQueries]);
 
   const handleChatRoomPress = (chatRoom: JoinedChatroomItem) => {
     onChatRoomPress?.(chatRoom);
@@ -132,7 +159,7 @@ export default function JoinedChatRoomList({ userId, onChatRoomPress }: JoinedCh
   return (
     <View className="flex-1 bg-white">
       <FlatList
-        data={joinedChatrooms || []}
+        data={sortedChatrooms}
         renderItem={renderChatRoomItem}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}

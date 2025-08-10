@@ -35,7 +35,7 @@ export default function HomeScreen() {
       {/* Header */}
       <View className="px-4 py-3">
         <View className="flex-row items-center justify-between">
-          <Text className="text-2xl font-semibold text-gray-900">Open Chats</Text>
+          <Text className="text-2xl font-semibold text-gray-900">Browse Chats</Text>
           <Button
             variant="ghost"
             size="icon"

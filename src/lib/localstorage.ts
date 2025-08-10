@@ -53,9 +53,9 @@ export const localStorage = {
     }
   },
 
-  async getDeletedMessageIds(chatroomId: string): Promise<string[]> {
+  async getHiddenMessageIds(chatroomId: string): Promise<string[]> {
     try {
-      const stored = await AsyncStorage.getItem(`deletedMessageIds_${chatroomId}`);
+      const stored = await AsyncStorage.getItem(`hiddenMessageIds_${chatroomId}`);
       return stored ? JSON.parse(stored) : [];
     } catch (error) {
       console.error('Error getting deleted message IDs from localStorage:', error);
@@ -63,11 +63,11 @@ export const localStorage = {
     }
   },
 
-  async addDeletedMessageId(chatroomId: string, messageId: string): Promise<void> {
+  async addHiddenMessageId(chatroomId: string, messageId: string): Promise<void> {
     try {
-      const existingIds = await this.getDeletedMessageIds(chatroomId);
+      const existingIds = await this.getHiddenMessageIds(chatroomId);
       const updatedIds = [...new Set([...existingIds, messageId])];
-      await AsyncStorage.setItem(`deletedMessageIds_${chatroomId}`, JSON.stringify(updatedIds));
+      await AsyncStorage.setItem(`hiddenMessageIds_${chatroomId}`, JSON.stringify(updatedIds));
     } catch (error) {
       console.error('Error adding deleted message ID to localStorage:', error);
     }

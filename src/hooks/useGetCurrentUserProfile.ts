@@ -40,6 +40,7 @@ export function useGetCurrentUserProfile(
   return useQuery<UserProfile | null, UserProfileError>({
     queryKey: ["userProfile"],
     queryFn: fetchCurrentUserProfile,
+    staleTime: Infinity,
     ...queryOptions,
   });
 } 

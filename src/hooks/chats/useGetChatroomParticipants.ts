@@ -43,3 +43,15 @@ export function useGetChatroomParticipants(
     ...queryOptions,
   });
 }
+
+export const prefetchChatroomParticipants = async (
+  queryClient: any,
+  chatroomId: string
+) => {
+  if (!chatroomId) return;
+  
+  await queryClient.prefetchQuery({
+    queryKey: ["chatroomParticipants", chatroomId],
+    queryFn: () => fetchChatroomParticipants(chatroomId),
+  });
+};
