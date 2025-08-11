@@ -4,10 +4,28 @@ import { ChatMessage } from '../types';
 import supabase from '@lib/supabase';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
+// Event payloads for single user channel
+export type MessageCreatedEventPayload = {
+  type: 'message_created';
+  chatroom_id: string;
+  message: ChatMessage;
+};
+
+export type MessageDeletedEventPayload = {
+  type: 'message_deleted';
+  chatroom_id: string;
+  message: ChatMessage;
+};
+
+export type SystemMessageCreatedEventPayload = {
+  type: 'system_message_created';
+  chatroom_id: string;
+  message: ChatMessage;
+};
+
 interface ChatMessageSubscriptionContextType {
-  refreshSubscriptions: (chatroomIds: string[]) => void;
-  broadcastMessageCreatedEvent: (message: ChatMessage) => Promise<void>;
-  broadcastMessageDeletedEvent: (message: ChatMessage) => Promise<void>;
+  subscribe: () => void;
+  reconnect: () => Promise<void>;
 }
 
 const ChatMessageSubscriptionContext = createContext<ChatMessageSubscriptionContextType | null>(null);
@@ -28,12 +46,12 @@ export function ChatMessageSubscriptionProvider({
   children, 
 }: ChatMessageSubscriptionProviderProps) {
   const queryClient = useQueryClient();
-  const channelsRef = useRef<Map<string, RealtimeChannel>>(new Map());
-  const [subscribedChatroomIds, setSubscribedChatroomIds] = useState<string[]>([]);
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
   // Event subscription functions
-  const handleMessageCreatedEvent = useCallback((chatroomId: string) => (payload: any) => {
-    const newMessage = payload.payload as ChatMessage;
+  const handleMessageCreatedEvent = useCallback((payload: MessageCreatedEventPayload) => {
+    console.log('message created', payload);
+    const { chatroom_id: chatroomId, message: newMessage } = payload;
     queryClient.setQueryData(['chatMessages', chatroomId], (oldData: any) => {
       if (!oldData) return oldData;
       
@@ -50,29 +68,13 @@ export function ChatMessageSubscriptionProvider({
         }),
       };
     });
-    
-    queryClient.invalidateQueries({ queryKey: ['unreadCount', chatroomId] });
-    // Invalidate joined chatrooms to update last message display
-    queryClient.invalidateQueries({ queryKey: ['joinedChatrooms'] });
+    queryClient.setQueryData(['latestChatMessage', chatroomId], newMessage);
+    queryClient.invalidateQueries({ queryKey: ['unreadChatroomMessageCount', chatroomId] });
   }, [queryClient]);
 
-  const handleMessageEditedEvent = useCallback((chatroomId: string) => (payload: any) => {
-    const editedMessage = payload.payload as ChatMessage;
-    queryClient.setQueryData(['chatMessages', chatroomId], (oldData: any) => {
-      return {
-        ...oldData,
-        pages: oldData.pages.map((page: any) => ({
-          ...page,
-          messages: page.messages.map((msg: ChatMessage) =>
-            msg.id === editedMessage.id ? editedMessage : msg
-          ),
-        })),
-      };
-    });
-  }, [queryClient]);
 
-  const handleMessageDeletedEvent = useCallback((chatroomId: string) => (payload: any) => {
-    const deletedMessage = payload.payload as ChatMessage;
+  const handleMessageDeletedEvent = useCallback((payload: MessageDeletedEventPayload) => {
+    const { chatroom_id: chatroomId, message: deletedMessage } = payload;
     queryClient.setQueryData(['chatMessages', chatroomId], (oldData: any) => {
       return {
         ...oldData,
@@ -84,11 +86,11 @@ export function ChatMessageSubscriptionProvider({
         })),
       };
     });
+    queryClient.invalidateQueries({ queryKey: ['latestChatMessage', chatroomId] });
   }, [queryClient]);
 
-  const handleSystemMessageCreated = useCallback((chatroomId: string) => (payload: any) => {
-    const newSystemMessage = payload.payload as ChatMessage;
-    
+  const handleSystemMessageCreated = useCallback((payload: SystemMessageCreatedEventPayload) => {
+    const { chatroom_id: chatroomId, message: newSystemMessage } = payload;
     queryClient.setQueryData(['chatMessages', chatroomId], (oldData: any) => {
       if (!oldData) return oldData;
       
@@ -105,91 +107,50 @@ export function ChatMessageSubscriptionProvider({
         }),
       };
     });
-    
-    // Invalidate joined chatrooms to update last message display
-    queryClient.invalidateQueries({ queryKey: ['joinedChatrooms'] });
+
+    queryClient.setQueryData(['latestChatMessage', chatroomId], newSystemMessage);
     // Invalidate chatroom participants to update participant in case it's user in/out of the chatroom
     queryClient.invalidateQueries({ queryKey: ['chatroomParticipants', chatroomId] });
   }, [queryClient]);
 
-  const subscribeToChannel = useCallback((chatroomId: string) => {
-    const channel = supabase.channel(chatroomId, {
-      config: {},
-    });
-
+  const subscribe = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    
+    const userId = user.id;
+    const channel = supabase.channel(userId, { config: {} });
     channel
-      .on('broadcast', { event: 'message_created' }, handleMessageCreatedEvent(chatroomId))
-      .on('broadcast', { event: 'message_edited' }, handleMessageEditedEvent(chatroomId))
-      .on('broadcast', { event: 'message_deleted' }, handleMessageDeletedEvent(chatroomId))
-      .on('broadcast', { event: 'system_message_created' }, handleSystemMessageCreated(chatroomId))
+      .on('broadcast', { event: 'message_created' }, (payload) => handleMessageCreatedEvent(payload.payload as MessageCreatedEventPayload))
+      .on('broadcast', { event: 'message_deleted' }, (payload) => handleMessageDeletedEvent(payload.payload as MessageDeletedEventPayload))
+      .on('broadcast', { event: 'system_message_created' }, (payload) => handleSystemMessageCreated(payload.payload as SystemMessageCreatedEventPayload))
       .subscribe();
-
-    channelsRef.current.set(chatroomId, channel);
+    channelRef.current = channel;
     return channel;
-  }, [handleMessageCreatedEvent, handleMessageEditedEvent, handleMessageDeletedEvent, handleSystemMessageCreated]);
+  }, [handleMessageCreatedEvent, handleMessageDeletedEvent, handleSystemMessageCreated]);
 
-  const unsubscribeFromChannel = useCallback((chatroomId: string) => {
-    const channel = channelsRef.current.get(chatroomId);
-    if (channel) {
-      channel.unsubscribe();
-      channelsRef.current.delete(chatroomId);
+  const unsubscribe = useCallback(() => {
+    if (channelRef.current) {
+      channelRef.current.unsubscribe();
+      channelRef.current = null;
     }
   }, []);
 
-  useEffect(() => {
-    // Unsubscribe from channels that are no longer needed
-    const currentChannels = Array.from(channelsRef.current.keys());
-    currentChannels.forEach(chatroomId => {
-      if (!subscribedChatroomIds.includes(chatroomId)) {
-        unsubscribeFromChannel(chatroomId);
-      }
-    });
+  const reconnect = useCallback(async () => {
+    supabase.realtime.connect();
+    // fetch chat data 
+    await Promise.all([
+      queryClient.refetchQueries({ queryKey: ['latestChatMessage'] }),
+      queryClient.refetchQueries({ queryKey: ['chatMessages'] }),
+      queryClient.refetchQueries({ queryKey: ['unreadChatroomMessageCount'] }),
+    ]);
 
-    // Subscribe to new channels
-    subscribedChatroomIds.forEach(chatroomId => {
-      if (!channelsRef.current.has(chatroomId)) {
-        subscribeToChannel(chatroomId);
-      }
-    });
-
-    return () => {
-      // Cleanup all channels on unmount
-      channelsRef.current.forEach(channel => channel.unsubscribe());
-      channelsRef.current.clear();
-    };
-  }, [subscribedChatroomIds, subscribeToChannel, unsubscribeFromChannel]);
-
-  const refreshSubscriptions = useCallback((newChatroomIds: string[]) => {
-    setSubscribedChatroomIds(newChatroomIds);
-  }, []);
-
-  // Event Publisher Functions
-  const broadcastMessageCreatedEvent = useCallback(async (message: ChatMessage) => {
-    const channel = channelsRef.current.get(message.chatroom_id);
-    if (channel) {
-      await channel.send({
-        type: 'broadcast',
-        event: 'message_created',
-        payload: message,
-      });
-    }
-  }, []);
-
-  const broadcastMessageDeletedEvent = useCallback(async (message: ChatMessage) => {
-    const channel = channelsRef.current.get(message.chatroom_id);
-    if (channel) {
-      await channel.send({
-        type: 'broadcast',
-        event: 'message_deleted',
-        payload: message,
-      });
-    }
-  }, []);
+    unsubscribe();
+    subscribe();
+  }, [subscribe, unsubscribe]);
 
   const contextValue = {
-    refreshSubscriptions,
-    broadcastMessageCreatedEvent,
-    broadcastMessageDeletedEvent,
+    subscribe,
+    reconnect,
   };
   
   return React.createElement(

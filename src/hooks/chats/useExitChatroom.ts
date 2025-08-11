@@ -60,7 +60,7 @@ export function useExitChatroom(
       queryClient.invalidateQueries({ queryKey: ["chatroomParticipants", variables.chatroom_id] });
       queryClient.invalidateQueries({ queryKey: ["joinedChatrooms"] });
       queryClient.invalidateQueries({ queryKey: ["chatMessages", variables.chatroom_id] });
-      queryClient.invalidateQueries({ queryKey: ["unreadCount", variables.chatroom_id] });
+      queryClient.invalidateQueries({ queryKey: ["unreadChatroomMessageCount", variables.chatroom_id] });
     },
     ...mutationOptions,
   });

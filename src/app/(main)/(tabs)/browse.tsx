@@ -49,7 +49,7 @@ export default function HomeScreen() {
       
       {/* Description above chatroom list */}
       <View className="px-4 pb-4">
-        <Text className="text-2xl font-semibold text-gray-700">
+        <Text className="text-xl font-semibold text-gray-700 opacity-80">
           Browse Chats
         </Text>
         <Text className="text-md text-gray-500 mt-1">

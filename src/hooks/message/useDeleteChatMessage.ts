@@ -6,7 +6,6 @@ import {
 } from "@tanstack/react-query";
 import supabase from '../../lib/supabase';
 import { ChatMessage } from '../types';
-import { useChatMessageSubscriptionContext } from './useChatMessageSubscription';
 
 export type DeleteChatMessageError = {
   message: string;
@@ -45,14 +44,10 @@ export function useDeleteChatMessage(
   mutationOptions?: Partial<UseMutationOptions<ChatMessage, DeleteChatMessageError, DeleteChatMessageData>>,
 ): UseMutationResult<ChatMessage, DeleteChatMessageError, DeleteChatMessageData> {
   const queryClient = useQueryClient();
-  const { broadcastMessageDeletedEvent } = useChatMessageSubscriptionContext();
 
   return useMutation<ChatMessage, DeleteChatMessageError, DeleteChatMessageData>({
     mutationFn: deleteChatMessage,
-    onSuccess: async (deletedMessage, variables) => {
-      // Broadcast the message deleted event
-      await broadcastMessageDeletedEvent(deletedMessage);
-      
+    onSuccess: async (_, variables) => {
       // Invalidate and refetch chat messages
       queryClient.invalidateQueries({ queryKey: ['chatMessages', variables.chatroom_id] });
     },

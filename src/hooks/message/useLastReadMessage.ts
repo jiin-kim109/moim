@@ -34,7 +34,7 @@ export function useSaveLastReadMessage() {
       // Invalidate the last read message query for this chatroom
       queryClient.invalidateQueries({ queryKey: ['lastReadMessage', chatroomId] });
       // Invalidate unread count for this chatroom
-      queryClient.invalidateQueries({ queryKey: ['unreadCount', chatroomId] });
+      queryClient.invalidateQueries({ queryKey: ['unreadChatroomMessageCount', chatroomId] });
     },
   });
 }

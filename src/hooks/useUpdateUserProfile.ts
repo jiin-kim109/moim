@@ -8,7 +8,6 @@ import supabase from '../lib/supabase';
 import { UserProfile, Address, ChatRoom } from './types';
 import { FileHolder } from '@lib/objectstore';
 import { fetchCurrentUserProfile } from "./useGetCurrentUserProfile";
-import { JOINED_CHATROOMS_QUERY_KEY } from './chats/useGetJoinedChatrooms';
 
 type UpdateUserProfileData = Partial<Omit<UserProfile, 'id' | 'address' | 'profile_image_url'>> & {
   profile_image_file?: FileHolder | null;
@@ -125,16 +124,9 @@ export function useUpdateUserProfile(
         });
       }
 
-      // If profile image changed, invalidate participants for all joined chatrooms
+      // If profile image changed, invalidate participants
       if (variables.profile_image_file !== undefined) {
-        const joinedChatrooms = queryClient.getQueryData<ChatRoom[]>(JOINED_CHATROOMS_QUERY_KEY as any);
-        if (joinedChatrooms && Array.isArray(joinedChatrooms)) {
-          joinedChatrooms.forEach((room) => {
-            if (room?.id) {
-              queryClient.invalidateQueries({ queryKey: ["chatroomParticipants", room.id] });
-            }
-          });
-        }
+        queryClient.invalidateQueries({ queryKey: ["chatroomParticipants"] });
       }
     },
     ...mutationOptions,

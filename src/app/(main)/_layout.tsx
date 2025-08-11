@@ -1,24 +1,34 @@
 import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { ChatMessageSubscriptionProvider, useChatMessageSubscriptionContext } from '@hooks/message/useChatMessageSubscription';
-import { useGetJoinedChatrooms } from '@hooks/chats/useGetJoinedChatrooms';
 import { useGetCurrentUserProfile } from '@hooks/useGetCurrentUserProfile';
+import { AppState } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
+import { useQueryClient } from '@tanstack/react-query';
 
 function SubscriptionManager() {
-  const { refreshSubscriptions } = useChatMessageSubscriptionContext();
-  const { data: userProfile } = useGetCurrentUserProfile();
-  const currentUserId = userProfile?.id;
+  const { reconnect } = useChatMessageSubscriptionContext();
 
-  const { data: joinedChatrooms } = useGetJoinedChatrooms(currentUserId || '', {
-    enabled: !!currentUserId,
-  });
-
+  // reconnection listeners (foreground + network restore)
   useEffect(() => {
-    if (joinedChatrooms && joinedChatrooms.length > 0) {
-      const chatroomIds = joinedChatrooms.map(chatroom => chatroom.id);
-      refreshSubscriptions(chatroomIds);
-    }
-  }, [joinedChatrooms, refreshSubscriptions]);
+    const onAppStateChange = (state: string) => {
+      if (state === 'active') {
+        reconnect();
+      }
+    };
+    const appStateSub = AppState.addEventListener('change', onAppStateChange);
+
+    const netUnsub = NetInfo.addEventListener((state) => {
+      if (state.isConnected) {
+        reconnect();
+      }
+    });
+
+    return () => {
+      appStateSub.remove();
+      netUnsub();
+    };
+  }, [reconnect]);
 
   return null;
 }

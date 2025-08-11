@@ -20,6 +20,28 @@ interface SystemMessageProps {
   message: ChatMessageType;
 }
 
+function MessageAvatar({ message }: { message: ChatMessageType }) {
+  return (
+    <Avatar className="w-14 h-14 mr-3 !rounded-2xl" alt={`${message.sender_nickname}`}>
+      {message.sender?.profile_image_url ? (
+        <AvatarImage source={{ uri: message.sender.profile_image_url }} />
+      ) : (
+        <AvatarFallback className="bg-gray-100 !rounded-2xl">
+          <User size={16} color="#9CA3AF" />
+        </AvatarFallback>
+      )}
+    </Avatar>
+  );
+}
+
+function MessageNickname({ message }: { message: ChatMessageType }) {
+  return (
+    <Text className="text-base text-gray-600 pl-1 mb-2">
+      {message.sender_nickname}
+    </Text>
+  );
+}
+
 function DeletedMessage({ message, isCurrentUser }: DeletedMessageProps) {
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -30,21 +52,11 @@ function DeletedMessage({ message, isCurrentUser }: DeletedMessageProps) {
     <View className={`mb-4 ${isCurrentUser ? 'items-end' : 'items-start'}`}>
       <View className={`max-w-[75%] ${isCurrentUser ? 'flex-row-reverse' : 'flex-row'}`}>
         {!isCurrentUser && (
-          <Avatar className="w-14 h-14 mr-2 !rounded-2xl" alt={`${message.sender_nickname}`}>
-            {message.sender?.profile_image_url ? (
-              <AvatarImage source={{ uri: message.sender.profile_image_url }} />
-            ) : (
-              <AvatarFallback className="bg-gray-100 !rounded-2xl">
-                <User size={16} color="#9CA3AF" />
-              </AvatarFallback>
-            )}
-          </Avatar>
+          <MessageAvatar message={message} />
         )}
         <View className="flex-1">
           {!isCurrentUser && (
-            <Text className="text-base text-gray-400 mb-2">
-              {message.sender_nickname}
-            </Text>
+            <MessageNickname message={message} />
           )}
           <View className={`flex-row items-end ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
             {isCurrentUser && (
@@ -110,21 +122,11 @@ export default function ChatMessage({ message, isCurrentUser = false, onLongPres
     <View className={`mb-4 ${isCurrentUser ? 'items-end' : 'items-start'}`}>
       <View className={`max-w-[75%] ${isCurrentUser ? 'flex-row-reverse' : 'flex-row'}`}>
         {!isCurrentUser && (
-          <Avatar className="w-14 h-14 mr-2 !rounded-2xl" alt={`${message.sender_nickname}`}>
-            {message.sender?.profile_image_url ? (
-              <AvatarImage source={{ uri: message.sender.profile_image_url }} />
-            ) : (
-              <AvatarFallback className="bg-gray-100 !rounded-2xl">
-                <User size={16} color="#9CA3AF" />
-              </AvatarFallback>
-            )}
-          </Avatar>
+          <MessageAvatar message={message} />
         )}
         <View className="flex-1">
           {!isCurrentUser && (
-            <Text className="text-base text-gray-500 mb-2">
-              {message.sender_nickname}
-            </Text>
+            <MessageNickname message={message} />
           )}
           <View className={`flex-row items-end ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
             {isCurrentUser && (

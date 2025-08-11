@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { View, SafeAreaView, TouchableOpacity, FlatList, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, SafeAreaView, TouchableOpacity, FlatList, Alert, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Send, MapPin, Users, Edit, Trash2, Settings } from 'lucide-react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -36,7 +36,7 @@ export default function ChatroomScreen() {
   
   const { data: chatroom } = useGetChatroom(chatroom_id as string);
   const { data: participants, isLoading: participantsLoading } = useGetChatroomParticipants(chatroom_id as string);
-  const { data: messagesData } = useGetChatMessages(chatroom_id as string);
+  const { data: messagesData, fetchNextPage, hasNextPage, isFetchingNextPage } = useGetChatMessages(chatroom_id as string);
   const { data: lastReadMessage } = useGetLastReadMessage(chatroom_id as string);
   const sendMessageMutation = useSendChatMessage();
   const saveLastReadMessageMutation = useSaveLastReadMessage();
@@ -158,7 +158,6 @@ export default function ChatroomScreen() {
     const messages = (messagesData.pages[0] as any)?.messages;
     if (messages && messages.length > 0) {
       const latestMessage = messages[0];
-      
       if (!lastReadMessage || lastReadMessage.id !== latestMessage.id) {
         saveLastReadMessageMutation.mutate({
           chatroomId: chatroom_id as string,
@@ -199,11 +198,10 @@ export default function ChatroomScreen() {
       );
     }
 
-    const messages = (messagesData?.pages?.[0] as any)?.messages || [];
-    
-    const filteredMessages = messages.filter((message: ChatMessageType) => 
-      !hiddenMessageIds.includes(message.id)
-    );
+    const pages = (messagesData?.pages as any[]) || [];
+    const mergedDescending: ChatMessageType[] = pages.flatMap((p: any) => p.messages || []);
+    // Keep data in descending order and use inverted FlatList so newest appear at the bottom
+    const filteredMessages = mergedDescending.filter((m: ChatMessageType) => !hiddenMessageIds.includes(m.id));
 
     return (
       <FlatList
@@ -217,11 +215,24 @@ export default function ChatroomScreen() {
           />
         )}
         contentContainerStyle={{ 
-          padding: 16,
+          paddingHorizontal: 16,
+          paddingVertical: 8,
           flexGrow: 1,
           justifyContent: 'flex-end'
         }}
         inverted
+        onEndReachedThreshold={0.1}
+        onEndReached={() => {
+          if (hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+          }
+        }}
+        maintainVisibleContentPosition={{ minIndexForVisible: 1 }}
+        ListFooterComponent={isFetchingNextPage ? (
+          <View style={{ paddingVertical: 12 }}>
+            <ActivityIndicator />
+          </View>
+        ) : null}
         showsVerticalScrollIndicator={false}
       />
     );
@@ -230,7 +241,7 @@ export default function ChatroomScreen() {
   return (
     <GestureHandlerRootView className="flex-1 bg-orange-50">
       <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <TouchableOpacity onPress={handleCloseBottomSheet} activeOpacity={1} className="flex-1 mt-16">
+        <View pointerEvents="box-none" className="flex-1 mt-16">
           {/* Header */}
           <View className="flex-row items-center px-4 py-2 bg-orange-50">
             <TouchableOpacity
@@ -243,7 +254,7 @@ export default function ChatroomScreen() {
             <View className="flex-1">
               <View className="flex-row items-center gap-3">
                 <Text className="text-xl font-semibold text-gray-900">
-                  {chatroom?.title}
+                  {chatroom?.title && chatroom.title.length > 25 ? `${chatroom.title.substring(0, 25)}...` : chatroom?.title}
                 </Text>
                 <Text className="text-lg text-gray-500">
                   {participants?.length || 0}
@@ -282,10 +293,10 @@ export default function ChatroomScreen() {
           <View className="flex-1 bg-orange-50">
             {renderChatContent()}
           </View>
-        </TouchableOpacity>
+        </View>
         
         {/* Message Input Area */}
-        <View className="px-4 pb-12 py-4 bg-white border-t border-gray-200">
+        <View className="px-4 pb-8 pt-4 bg-white border-t border-gray-200">
           <View className="flex-row items-center px-2 gap-3">
             <View className="flex-1">
               <Textarea

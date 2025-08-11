@@ -7,7 +7,6 @@ import {
 import supabase from '../../lib/supabase';
 import { ChatMessage } from '../types';
 import localStorage from '@lib/localstorage';
-import { useChatMessageSubscriptionContext } from './useChatMessageSubscription';
 
 export type SendChatMessageError = {
   message: string;
@@ -49,16 +48,14 @@ export function useSendChatMessage(
   mutationOptions?: Partial<UseMutationOptions<ChatMessage, SendChatMessageError, SendChatMessageData>>,
 ): UseMutationResult<ChatMessage, SendChatMessageError, SendChatMessageData> {
   const queryClient = useQueryClient();
-  const { broadcastMessageCreatedEvent } = useChatMessageSubscriptionContext();
 
   return useMutation<ChatMessage, SendChatMessageError, SendChatMessageData>({
     mutationFn: sendChatMessage,
     onSuccess: async (newMessage, variables) => {
-      // Broadcast the message created event
-      await broadcastMessageCreatedEvent(newMessage);
-      
       // Invalidate and refetch chat messages
       queryClient.invalidateQueries({ queryKey: ['chatMessages', variables.chatroom_id] });
+      // Update latest message cache for chatroom list UI
+      queryClient.setQueryData(['latestChatMessage', variables.chatroom_id], newMessage);
       // Mark the sent message as last read message
       await localStorage.setLastReadMessage(variables.chatroom_id, newMessage);
     },

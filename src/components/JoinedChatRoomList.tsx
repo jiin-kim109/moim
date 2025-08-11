@@ -7,7 +7,8 @@ import { ChatRoom } from '../hooks/types';
 import { formatTimeForChatRoomList } from '../lib/utils';
 import { useGetJoinedChatrooms } from '../hooks/chats/useGetJoinedChatrooms';
 import { useGetUnreadChatroomMessageCount } from '../hooks/message/useGetUnreadChatroomMessageCount';
-import { useGetChatMessages, useGetMultipleChatroomMessages } from '../hooks/message/useGetChatMessages';
+import { useGetLatestChatroomMessages } from '../hooks/message/useGetLatestChatroomMessages';
+import { ChatMessage } from '../hooks/types';
 
 interface JoinedChatroomItem {
   chatroom: ChatRoom;
@@ -18,19 +19,14 @@ interface JoinedChatroomItem {
 interface JoinedChatRoomListItemProps {
   chatRoom: ChatRoom;
   userId: string;
+  latestMessage?: ChatMessage | null;
   onPress?: (chatRoom: JoinedChatroomItem) => void;
 }
 
-function JoinedChatRoomListItem({ chatRoom, userId, onPress }: JoinedChatRoomListItemProps) {
-  const { data: messagesData } = useGetChatMessages(chatRoom.id, {
-    enabled: !!chatRoom.id,
-  });
-  
+function JoinedChatRoomListItem({ chatRoom, userId, latestMessage, onPress }: JoinedChatRoomListItemProps) {
   const { data: unreadCount = 0 } = useGetUnreadChatroomMessageCount(chatRoom.id, userId, {
-    enabled: !!chatRoom.id,
+    enabled: !!chatRoom?.id && !!userId,
   });
-
-  const latestMessage = (messagesData as any)?.pages?.[0]?.messages?.[0];
 
   const chatroomItem: JoinedChatroomItem = {
     chatroom: chatRoom,
@@ -56,7 +52,9 @@ function JoinedChatRoomListItem({ chatRoom, userId, onPress }: JoinedChatRoomLis
         <View className="flex-row items-center justify-between mb-1">
           <View className="flex-row items-center flex-1">
             <Text className="text-lg font-medium text-gray-900" numberOfLines={1}>
-              {chatroomItem.chatroom.title.length > 25 ? `${chatroomItem.chatroom.title.substring(0, 25)}...` : chatroomItem.chatroom.title}
+              {(chatroomItem.chatroom.title ?? '').length > 25 
+                ? `${(chatroomItem.chatroom.title ?? '').substring(0, 25)}...` 
+                : (chatroomItem.chatroom.title ?? 'Untitled')}
             </Text>
             <Text className="text-base text-gray-500 ml-3">
               {chatroomItem.chatroom.participant_count}
@@ -101,37 +99,44 @@ export default function JoinedChatRoomList({ userId, onChatRoomPress }: JoinedCh
   const { data: joinedChatrooms, isLoading, refetch } = useGetJoinedChatrooms(userId);
   
 
-  const chatroomIds = React.useMemo(() => 
-    joinedChatrooms?.map(room => room.id) || [], 
-    [joinedChatrooms]
-  );
-  
-  const messageQueries = useGetMultipleChatroomMessages(chatroomIds);
-  
-  // Sort chatrooms by latest message timestamp
+  const chatroomIds = React.useMemo(() => (joinedChatrooms?.map(room => room.id) || []), [joinedChatrooms]);
+
+  // Fetch only the latest single message for each chatroom at list level
+  const latestMessageQueries = useGetLatestChatroomMessages(chatroomIds);
+
+  const latestByRoomId = React.useMemo(() => {
+    const map = new Map<string, ChatMessage | null | undefined>();
+    (joinedChatrooms || []).forEach((room, idx) => {
+      const latest = latestMessageQueries[idx]?.data as ChatMessage | null | undefined;
+      map.set(room.id, latest);
+    });
+    return map;
+  }, [joinedChatrooms, latestMessageQueries]);
+
+  // Sort chatrooms by latest message timestamp (desc)
   const sortedChatrooms = React.useMemo(() => {
     if (!joinedChatrooms) return [];
-    
     return [...joinedChatrooms].sort((a, b) => {
-      const [messagesA, messagesB] = [a, b].map(room => {
-        const idx = joinedChatrooms.findIndex(r => r.id === room.id);
-        return (messageQueries[idx]?.data as any)?.pages?.[0]?.messages?.[0]?.created_at;
-      });
-      
-      if (!messagesA && !messagesB) return 0;
-      if (!messagesA) return 1;
-      if (!messagesB) return -1;
-      
-      return new Date(messagesB).getTime() - new Date(messagesA).getTime();
+      const aCreatedAt = latestByRoomId.get(a.id)?.created_at;
+      const bCreatedAt = latestByRoomId.get(b.id)?.created_at;
+      if (!aCreatedAt && !bCreatedAt) return 0;
+      if (!aCreatedAt) return 1;
+      if (!bCreatedAt) return -1;
+      return new Date(bCreatedAt).getTime() - new Date(aCreatedAt).getTime();
     });
-  }, [joinedChatrooms, messageQueries]);
+  }, [joinedChatrooms, latestByRoomId]);
 
   const handleChatRoomPress = (chatRoom: JoinedChatroomItem) => {
     onChatRoomPress?.(chatRoom);
   };
 
   const renderChatRoomItem = ({ item }: { item: ChatRoom }) => (
-    <JoinedChatRoomListItem chatRoom={item} userId={userId} onPress={handleChatRoomPress} />
+    <JoinedChatRoomListItem 
+      chatRoom={item} 
+      userId={userId} 
+      latestMessage={latestByRoomId.get(item.id)} 
+      onPress={handleChatRoomPress} 
+    />
   );
 
   const renderEmptyState = () => (
