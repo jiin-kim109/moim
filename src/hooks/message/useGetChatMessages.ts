@@ -18,15 +18,8 @@ export type ChatMessagesPage = {
 
 const PAGE_SIZE = 30;
 
-export const fetchChatMessages = async (
-  chatroomId: string,
-  cursor?: string
-): Promise<ChatMessagesPage> => {
-  if (!chatroomId) {
-    throw new Error('Chatroom ID is required');
-  }
-
-  let query = supabase
+const messageQuery = () => {
+  return supabase
     .from('chat_messages')
     .select(`
       *,
@@ -35,9 +28,36 @@ export const fetchChatMessages = async (
         chatroom_participants!inner(*)
       )
     `)
-    .eq('chatroom_id', chatroomId)
-    .order('created_at', { ascending: false })
-    .limit(PAGE_SIZE);
+}
+
+export const fetchChatMessage = async (messageId: string) => {
+  const { data, error } = await messageQuery().eq('id', messageId).single();
+  if (error) {
+    throw new Error(`Failed to fetch chat message: ${error.message}`);
+  }
+  
+  const senderParticipant = data.chatroom?.chatroom_participants?.find(
+    (participant: any) => participant.user_id === data.sender_id
+  );
+  
+  return {
+    ...data,
+    sender_nickname: senderParticipant?.nickname
+  } as ChatMessage;
+}
+
+export const fetchChatMessages = async (
+  chatroomId: string,
+  cursor?: string
+): Promise<ChatMessagesPage> => {
+  if (!chatroomId) {
+    throw new Error('Chatroom ID is required');
+  }
+
+  let query = messageQuery();
+  query.eq('chatroom_id', chatroomId);
+  query.order('created_at', { ascending: false });
+  query.limit(PAGE_SIZE);
 
   // Add cursor-based pagination
   if (cursor) {

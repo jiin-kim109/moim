@@ -4,19 +4,17 @@ import { ChatMessageSubscriptionProvider, useChatMessageSubscriptionContext } fr
 import { useGetCurrentUserProfile } from '@hooks/useGetCurrentUserProfile';
 import { AppState } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
-import { useQueryClient } from '@tanstack/react-query';
 
 function SubscriptionManager() {
   const { reconnect } = useChatMessageSubscriptionContext();
 
   // reconnection listeners (foreground + network restore)
   useEffect(() => {
-    const onAppStateChange = (state: string) => {
+    const appStateSub = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
         reconnect();
       }
-    };
-    const appStateSub = AppState.addEventListener('change', onAppStateChange);
+    });
 
     const netUnsub = NetInfo.addEventListener((state) => {
       if (state.isConnected) {

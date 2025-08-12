@@ -44,3 +44,10 @@ export function useGetCurrentUserProfile(
     ...queryOptions,
   });
 } 
+
+export async function prefetchCurrentUserProfile(queryClient: any) {
+  await queryClient.prefetchQuery({
+    queryKey: ["userProfile"],
+    queryFn: fetchCurrentUserProfile,
+  });
+}

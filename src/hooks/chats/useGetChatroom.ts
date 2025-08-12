@@ -60,3 +60,10 @@ export function useGetChatroom(
     ...queryOptions,
   });
 }
+
+export async function prefetchChatroom(queryClient: any, chatroomId: string) {
+  await queryClient.prefetchQuery({
+    queryKey: ["chatroom", chatroomId],
+    queryFn: () => fetchChatroom(chatroomId),
+  });
+}

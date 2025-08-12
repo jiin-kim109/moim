@@ -97,7 +97,7 @@ function SystemMessage({ message }: SystemMessageProps) {
   );
 }
 
-export default function ChatMessage({ message, isCurrentUser = false, onLongPress }: ChatMessageProps) {
+function ChatMessage({ message, isCurrentUser = false, onLongPress }: ChatMessageProps) {
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -174,4 +174,16 @@ export default function ChatMessage({ message, isCurrentUser = false, onLongPres
       </View>
     </View>
   );
-} 
+}
+
+// Memoize the component to prevent unnecessary re-renders
+export default React.memo(ChatMessage, (prevProps, nextProps) => {
+  // Custom comparison function for better performance
+  return (
+    prevProps.message.id === nextProps.message.id &&
+    prevProps.message.message === nextProps.message.message &&
+    prevProps.message.is_deleted === nextProps.message.is_deleted &&
+    prevProps.message.is_edited === nextProps.message.is_edited &&
+    prevProps.isCurrentUser === nextProps.isCurrentUser
+  );
+}); 

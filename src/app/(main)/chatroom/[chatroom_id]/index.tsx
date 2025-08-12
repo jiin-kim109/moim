@@ -43,6 +43,7 @@ export default function ChatroomScreen() {
   const deleteMessageMutation = useDeleteChatMessage();
   const hideMessageMutation = useHideChatMessage();
   const [hiddenMessageIds, setHiddenMessageIds] = useState<string[]>([]);
+  const flatListRef = useRef<FlatList>(null);
 
   const isParticipant = participants?.find(
     (participant) => participant.user_id === currentUserId
@@ -144,11 +145,6 @@ export default function ChatroomScreen() {
     }
   }, [selectedMessage]);
 
-  const handleCloseBottomSheet = useCallback(() => {
-    bottomSheetRef.current?.close();
-    setSelectedMessage(null);
-  }, []);
-
   // Store last read message when entering chatroom or when new messages arrive
   useEffect(() => {
     if (!chatroom_id || !isParticipant || !messagesData?.pages?.[0]) {
@@ -167,6 +163,19 @@ export default function ChatroomScreen() {
     }
   }, [chatroom_id, isParticipant, messagesData, lastReadMessage, saveLastReadMessageMutation]);
 
+  // Auto-scroll to bottom when sending a message
+  useEffect(() => {
+    if (!messagesData?.pages?.[0]) return;
+    
+    const messages = (messagesData.pages[0] as any)?.messages;
+    if (messages.length > 0) {
+      // Small delay to ensure the FlatList has rendered the new message
+      setTimeout(() => {
+        flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+      }, 100);
+    }
+  }, [messagesData?.pages?.[0]]);
+
   const handleSend = async () => {
     if (!message.trim() || !currentUserId) return;
 
@@ -184,6 +193,35 @@ export default function ChatroomScreen() {
     }
   };
 
+  const filteredMessages = useMemo(() => {
+    const pages = (messagesData?.pages as any[]) || [];
+    const mergedDescending: ChatMessageType[] = pages.flatMap((p: any) => p.messages || []);
+    return mergedDescending.filter((m: ChatMessageType) => !hiddenMessageIds.includes(m.id));
+  }, [messagesData?.pages, hiddenMessageIds]);
+
+  const renderItem = useCallback(({ item }: { item: ChatMessageType }) => (
+    <ChatMessage 
+      message={item} 
+      isCurrentUser={item.sender_id === currentUserId}
+      onLongPress={handleMessageLongPress}
+    />
+  ), [currentUserId, handleMessageLongPress]);
+
+  const handleEndReached = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  const listFooterComponent = useMemo(() => {
+    if (!isFetchingNextPage) return null;
+    return (
+      <View style={{ paddingVertical: 12 }}>
+        <ActivityIndicator />
+      </View>
+    );
+  }, [isFetchingNextPage]);
+
   const renderChatContent = () => {
     if (userProfileLoading || participantsLoading) {
       return null;
@@ -198,22 +236,12 @@ export default function ChatroomScreen() {
       );
     }
 
-    const pages = (messagesData?.pages as any[]) || [];
-    const mergedDescending: ChatMessageType[] = pages.flatMap((p: any) => p.messages || []);
-    // Keep data in descending order and use inverted FlatList so newest appear at the bottom
-    const filteredMessages = mergedDescending.filter((m: ChatMessageType) => !hiddenMessageIds.includes(m.id));
-
     return (
       <FlatList
+        ref={flatListRef}
         data={filteredMessages}
         keyExtractor={(item: ChatMessageType) => item.id}
-        renderItem={({ item }: { item: ChatMessageType }) => (
-          <ChatMessage 
-            message={item} 
-            isCurrentUser={item.sender_id === currentUserId}
-            onLongPress={handleMessageLongPress}
-          />
-        )}
+        renderItem={renderItem}
         contentContainerStyle={{ 
           paddingHorizontal: 16,
           paddingVertical: 8,
@@ -222,18 +250,15 @@ export default function ChatroomScreen() {
         }}
         inverted
         onEndReachedThreshold={0.1}
-        onEndReached={() => {
-          if (hasNextPage && !isFetchingNextPage) {
-            fetchNextPage();
-          }
-        }}
+        onEndReached={handleEndReached}
         maintainVisibleContentPosition={{ minIndexForVisible: 1 }}
-        ListFooterComponent={isFetchingNextPage ? (
-          <View style={{ paddingVertical: 12 }}>
-            <ActivityIndicator />
-          </View>
-        ) : null}
+        ListFooterComponent={listFooterComponent}
         showsVerticalScrollIndicator={false}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={50}
+        initialNumToRender={20}
+        windowSize={10}
       />
     );
   };

@@ -52,3 +52,10 @@ export function useGetLatestChatroomMessages(chatroomIds: string[]) {
 
   return latestMessageQueries;
 }
+
+export async function prefetchLatestChatroomMessage(queryClient: any, chatroomId: string) {
+  await queryClient.prefetchQuery({
+    queryKey: ["latestChatMessage", chatroomId],
+    queryFn: () => fetchLatestChatroomMessage(chatroomId),
+  });
+}

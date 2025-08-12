@@ -9,6 +9,7 @@ import { useGetJoinedChatrooms } from '../hooks/chats/useGetJoinedChatrooms';
 import { useGetUnreadChatroomMessageCount } from '../hooks/message/useGetUnreadChatroomMessageCount';
 import { useGetLatestChatroomMessages } from '../hooks/message/useGetLatestChatroomMessages';
 import { ChatMessage } from '../hooks/types';
+import { useGetCurrentUserProfile } from '@hooks/useGetCurrentUserProfile';
 
 interface JoinedChatroomItem {
   chatroom: ChatRoom;
@@ -91,13 +92,15 @@ function JoinedChatRoomListItem({ chatRoom, userId, latestMessage, onPress }: Jo
 }
 
 interface JoinedChatRoomListProps {
-  userId: string;
   onChatRoomPress?: (chatRoom: JoinedChatroomItem) => void;
 }
 
-export default function JoinedChatRoomList({ userId, onChatRoomPress }: JoinedChatRoomListProps) {
-  const { data: joinedChatrooms, isLoading, refetch } = useGetJoinedChatrooms(userId);
-  
+export default function JoinedChatRoomList({ onChatRoomPress }: JoinedChatRoomListProps) {
+  const { data: userProfile } = useGetCurrentUserProfile();
+  const { data: joinedChatrooms, isLoading, refetch } = useGetJoinedChatrooms(userProfile?.id ?? '', {
+    enabled: !!userProfile?.id,
+  });
+  const userId = userProfile?.id ?? '';
 
   const chatroomIds = React.useMemo(() => (joinedChatrooms?.map(room => room.id) || []), [joinedChatrooms]);
 
@@ -157,7 +160,7 @@ export default function JoinedChatRoomList({ userId, onChatRoomPress }: JoinedCh
     </View>
   );
 
-  if (isLoading) {
+  if (userId && isLoading) {
     return renderLoadingState();
   }
 
