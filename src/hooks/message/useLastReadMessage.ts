@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ChatMessage } from '../types';
-import { localStorage } from '../../lib/localstorage';
+import supabase from '../../lib/supabase';
 
 export type LastReadMessageError = {
   message: string;
@@ -9,16 +9,59 @@ export type LastReadMessageError = {
 
 export type SaveLastReadMessageData = {
   chatroomId: string;
-  message: ChatMessage;
+  messageId: string;
+};
+
+export const fetchLastReadMessage = async (
+  chatroomId: string
+): Promise<ChatMessage | null> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error('User is not authenticated');
+  }
+
+  const { data: participant, error: participantError } = await supabase
+    .from('chatroom_participants')
+    .select('last_read_message_id')
+    .eq('chatroom_id', chatroomId)
+    .eq('user_id', user.id)
+    .single();
+
+  if (participantError || !participant?.last_read_message_id) {
+    throw new Error('Participant not found');
+  }
+
+  const { data: message, error: messageError } = await supabase
+    .from('chat_messages')
+    .select(`
+      *,
+      chatroom!inner(
+        chatroom_participants!inner(*)
+      )
+    `)
+    .eq('id', participant.last_read_message_id)
+    .single();
+
+  if (messageError) {
+    throw new Error('Message not found');
+  }
+
+  const chatroom = message.chatroom as any;
+  const participants = chatroom.chatroom_participants || [];
+  const senderInfo = participants.find((p: any) => p.user_id === message.sender_id);
+
+  return {
+    ...message,
+    sender_info: senderInfo || null
+  } as ChatMessage;
 };
 
 // Hook to get last read message for a chatroom
 export function useGetLastReadMessage(chatroomId: string) {
   return useQuery<ChatMessage | null, LastReadMessageError>({
     queryKey: ['lastReadMessage', chatroomId],
-    queryFn: () => localStorage.getLastReadMessage(chatroomId),
+    queryFn: () => fetchLastReadMessage(chatroomId),
     enabled: !!chatroomId,
-    staleTime: Infinity
   });
 }
 
@@ -26,14 +69,27 @@ export function useGetLastReadMessage(chatroomId: string) {
 export function useSaveLastReadMessage() {
   const queryClient = useQueryClient();
 
-  return useMutation<void, LastReadMessageError, SaveLastReadMessageData>({
-    mutationFn: async ({ chatroomId, message }) => {
-      await localStorage.setLastReadMessage(chatroomId, message);
+  return useMutation<ChatMessage | null, LastReadMessageError, SaveLastReadMessageData>({
+    mutationFn: async ({ chatroomId, messageId }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User is not authenticated');
+      }
+
+      const { error } = await supabase
+        .from('chatroom_participants')
+        .update({ last_read_message_id: messageId })
+        .eq('chatroom_id', chatroomId)
+        .eq('user_id', user.id);
+
+      if (error) {
+        throw new Error(`Failed to save last read message: ${error.message}`);
+      }
+
+      return await fetchLastReadMessage(chatroomId);
     },
-    onSuccess: (_, { chatroomId }) => {
-      // Invalidate the last read message query for this chatroom
-      queryClient.invalidateQueries({ queryKey: ['lastReadMessage', chatroomId] });
-      // Invalidate unread count for this chatroom
+    onSuccess: (lastReadMessage, { chatroomId }) => {
+      queryClient.setQueryData(['lastReadMessage', chatroomId], lastReadMessage);
       queryClient.invalidateQueries({ queryKey: ['unreadChatroomMessageCount', chatroomId] });
     },
   });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { View, SafeAreaView, TouchableOpacity, FlatList, Alert, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, TouchableOpacity, FlatList, Alert, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Send, MapPin, Users, Edit, Trash2, Settings } from 'lucide-react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -25,42 +25,29 @@ import { Textarea } from '@components/ui/textarea';
 export default function ChatroomScreen() {
   const router = useRouter();
   const { chatroom_id } = useLocalSearchParams();
-  const [message, setMessage] = useState('');
 
+  const [messageInputValue, setMessageInputValue] = useState('');
   const [selectedMessage, setSelectedMessage] = useState<ChatMessageType | null>(null);
-  
-  const bottomSheetRef = useRef<BottomSheet>(null);
+  const [hiddenMessageIds, setHiddenMessageIds] = useState<string[]>([]);
   
   const { data: userProfile, isLoading: userProfileLoading } = useGetCurrentUserProfile();
-  const currentUserId = userProfile?.id;
-  
   const { data: chatroom } = useGetChatroom(chatroom_id as string);
   const { data: participants, isLoading: participantsLoading } = useGetChatroomParticipants(chatroom_id as string);
   const { data: messagesData, fetchNextPage, hasNextPage, isFetchingNextPage } = useGetChatMessages(chatroom_id as string);
-  const { data: lastReadMessage } = useGetLastReadMessage(chatroom_id as string);
+  const { data: lastReadMessage, isLoading: lastReadMessageLoading } = useGetLastReadMessage(chatroom_id as string);
   const sendMessageMutation = useSendChatMessage();
   const saveLastReadMessageMutation = useSaveLastReadMessage();
   const deleteMessageMutation = useDeleteChatMessage();
   const hideMessageMutation = useHideChatMessage();
-  const [hiddenMessageIds, setHiddenMessageIds] = useState<string[]>([]);
-  const flatListRef = useRef<FlatList>(null);
 
+  const flatListRef = useRef<FlatList>(null);
+  const bottomSheetRef = useRef<BottomSheet>(null);
+
+  const currentUserId = userProfile?.id;
   const isParticipant = participants?.find(
     (participant) => participant.user_id === currentUserId
   );
-
   const isHost = chatroom?.host_id === currentUserId;
-
-  // Pre-create debounced navigation handlers (must be called at top-level, not during render)
-  const handleGoBack = useDebouncedFunction(() => router.back());
-  const handleOpenParticipants = useDebouncedFunction(() => router.push(`/chatroom/${chatroom_id}/participants`));
-  const handleOpenSettings = useDebouncedFunction(() => router.push(`/chatroom/${chatroom_id}/settings`));
-
-  // Handle long press on chat message
-  const handleMessageLongPress = useCallback((message: ChatMessageType) => {
-    setSelectedMessage(message);
-    bottomSheetRef.current?.expand();
-  }, []);
 
   // Load hidden message IDs on mount
   useEffect(() => {
@@ -72,6 +59,69 @@ export default function ChatroomScreen() {
     };
     loadHiddenMessageIds();
   }, [chatroom_id]);
+
+  // Update last read message when entering chatroom
+  // Only update if we don't have a last read message yet (first time entering chatroom)
+  // or if there are newer messages since our last read
+  useEffect(() => {
+    if (!messagesData?.pages?.[0] || lastReadMessageLoading || !currentUserId) {
+      return;
+    }
+
+    const latestChatroomMessage = (messagesData.pages[0] as any)?.messages[0] as ChatMessageType;
+    
+    if (!lastReadMessage || (latestChatroomMessage && lastReadMessage.id !== latestChatroomMessage.id)) {
+      saveLastReadMessageMutation.mutate({
+        chatroomId: chatroom_id as string,
+        messageId: latestChatroomMessage.id,
+      });
+    }
+  }, [chatroom_id, currentUserId, (messagesData?.pages?.[0] as any)?.messages?.[0]?.id, lastReadMessage?.id]);
+
+  // Auto-scroll to bottom when sending a message
+  useEffect(() => {
+    if (!messagesData?.pages?.[0]) return;
+    
+    const messages = (messagesData.pages[0] as any)?.messages;
+    if (messages.length > 0) {
+      // Small delay to ensure the FlatList has rendered the new message
+      setTimeout(() => {
+        flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+      }, 100);
+    }
+  }, [messagesData?.pages?.[0]]);
+
+  const handleGoBack = useDebouncedFunction(() => router.back());
+  const handleOpenParticipants = useDebouncedFunction(() => router.push(`/chatroom/${chatroom_id}/participants`));
+  const handleOpenSettings = useDebouncedFunction(() => router.push(`/chatroom/${chatroom_id}/settings`));
+
+  // Handle long press on chat message
+  const handleMessageLongPress = useCallback((message: ChatMessageType) => {
+    setSelectedMessage(message);
+    bottomSheetRef.current?.expand();
+  }, []);
+
+  const handleSend = async () => {
+    if (!messageInputValue.trim() || !currentUserId) return;
+
+    try {
+      // Send message to database
+      await sendMessageMutation.mutateAsync({
+        chatroom_id: chatroom_id as string,
+        message: messageInputValue.trim(),
+      });
+
+      setMessageInputValue('');
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    }
+  };
+
+  const handleMessageListEndReached = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Handle delete message
   const handleDeleteMessage = useCallback(async () => {
@@ -135,64 +185,6 @@ export default function ChatroomScreen() {
     }
   }, [selectedMessage, chatroom_id, isHost, currentUserId, deleteMessageMutation, hideMessageMutation]);
 
-  // Handle edit message
-  const handleEditMessage = useCallback(() => {
-    if (selectedMessage) {
-      console.log('Edit message:', selectedMessage.id);
-      // TODO: Implement edit message functionality
-      bottomSheetRef.current?.close();
-      setSelectedMessage(null);
-    }
-  }, [selectedMessage]);
-
-  // Store last read message when entering chatroom or when new messages arrive
-  useEffect(() => {
-    if (!chatroom_id || !isParticipant || !messagesData?.pages?.[0]) {
-      return;
-    }
-
-    const messages = (messagesData.pages[0] as any)?.messages;
-    if (messages && messages.length > 0) {
-      const latestMessage = messages[0];
-      if (!lastReadMessage || lastReadMessage.id !== latestMessage.id) {
-        saveLastReadMessageMutation.mutate({
-          chatroomId: chatroom_id as string,
-          message: latestMessage,
-        });
-      }
-    }
-  }, [chatroom_id, isParticipant, messagesData, lastReadMessage, saveLastReadMessageMutation]);
-
-  // Auto-scroll to bottom when sending a message
-  useEffect(() => {
-    if (!messagesData?.pages?.[0]) return;
-    
-    const messages = (messagesData.pages[0] as any)?.messages;
-    if (messages.length > 0) {
-      // Small delay to ensure the FlatList has rendered the new message
-      setTimeout(() => {
-        flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
-      }, 100);
-    }
-  }, [messagesData?.pages?.[0]]);
-
-  const handleSend = async () => {
-    if (!message.trim() || !currentUserId) return;
-
-    try {
-      // Send message to database
-      await sendMessageMutation.mutateAsync({
-        chatroom_id: chatroom_id as string,
-        message: message.trim(),
-        sender_id: currentUserId,
-      });
-
-      setMessage('');
-    } catch (error) {
-      console.error('Failed to send message:', error);
-    }
-  };
-
   const filteredMessages = useMemo(() => {
     const pages = (messagesData?.pages as any[]) || [];
     const mergedDescending: ChatMessageType[] = pages.flatMap((p: any) => p.messages || []);
@@ -206,12 +198,6 @@ export default function ChatroomScreen() {
       onLongPress={handleMessageLongPress}
     />
   ), [currentUserId, handleMessageLongPress]);
-
-  const handleEndReached = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage) {
-      fetchNextPage();
-    }
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const listFooterComponent = useMemo(() => {
     if (!isFetchingNextPage) return null;
@@ -250,7 +236,7 @@ export default function ChatroomScreen() {
         }}
         inverted
         onEndReachedThreshold={0.1}
-        onEndReached={handleEndReached}
+        onEndReached={handleMessageListEndReached}
         maintainVisibleContentPosition={{ minIndexForVisible: 1 }}
         ListFooterComponent={listFooterComponent}
         showsVerticalScrollIndicator={false}
@@ -325,8 +311,8 @@ export default function ChatroomScreen() {
           <View className="flex-row items-center px-2 gap-3">
             <View className="flex-1">
               <Textarea
-                value={message}
-                onChangeText={setMessage}
+                value={messageInputValue}
+                onChangeText={setMessageInputValue}
                 placeholder="Type a message..."
                 multiline
                 editable={!!isParticipant}
@@ -339,10 +325,10 @@ export default function ChatroomScreen() {
             
             <Button
               onPress={handleSend}
-              disabled={!isParticipant || !message.trim()}
+              disabled={!isParticipant || !messageInputValue.trim()}
               size="icon"
               className={`w-12 h-12 rounded-full ${
-                message.trim() ? 'bg-orange-500' : 'bg-gray-300'
+                messageInputValue.trim() ? 'bg-orange-500' : 'bg-gray-300'
               }`}
             >
               <Send 
@@ -380,20 +366,6 @@ export default function ChatroomScreen() {
 
             {/* Action Buttons */}
             <View className="gap-4">
-              {/* Edit Message Button */}
-              {selectedMessage && selectedMessage.sender_id === currentUserId && (
-                <Button
-                  onPress={handleEditMessage}
-                  variant="outline"
-                  className="w-full"
-                >
-                  <View className="flex-row items-center justify-center gap-2">
-                    <Edit size={18} color="#374151" />
-                    <Text className="text-gray-700 font-medium">Edit Message</Text>
-                  </View>
-                </Button>
-              )}
-
               {/* Delete Message Button */}
               <Button
                 onPress={handleDeleteMessage}

@@ -22,6 +22,7 @@ export interface ChatRoomParticipant {
   nickname: string | null;
   joined_at: string;
   profile_image_url?: string | null;
+  last_read_message_id?: string | null;
 }
 
 export interface ChatRoom {

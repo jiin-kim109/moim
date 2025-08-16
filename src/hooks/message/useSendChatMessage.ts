@@ -6,7 +6,6 @@ import {
 } from "@tanstack/react-query";
 import supabase from '../../lib/supabase';
 import { ChatMessage } from '../types';
-import localStorage from '@lib/localstorage';
 
 export type SendChatMessageError = {
   message: string;
@@ -16,18 +15,21 @@ export type SendChatMessageError = {
 export type SendChatMessageData = {
   chatroom_id: string;
   message: string;
-  sender_id: string;
 };
 
 export const sendChatMessage = async (
   data: SendChatMessageData
 ): Promise<ChatMessage> => {
-  // Insert message into database
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error('User is not authenticated');
+  }
+
   const { data: newMessage, error: insertError } = await supabase
     .from('chat_messages')
     .insert({
       chatroom_id: data.chatroom_id,
-      sender_id: data.sender_id,
+      sender_id: user.id,
       message: data.message,
       message_type: 'user_message',
     })
@@ -52,12 +54,27 @@ export function useSendChatMessage(
   return useMutation<ChatMessage, SendChatMessageError, SendChatMessageData>({
     mutationFn: sendChatMessage,
     onSuccess: async (newMessage, variables) => {
-      // Invalidate and refetch chat messages
-      queryClient.invalidateQueries({ queryKey: ['chatMessages', variables.chatroom_id] });
-      // Update latest message cache for chatroom list UI
-      queryClient.setQueryData(['latestChatMessage', variables.chatroom_id], newMessage);
-      // Mark the sent message as last read message
-      await localStorage.setLastReadMessage(variables.chatroom_id, newMessage);
+      // Prepend the new message to the first page of the chat messages
+      queryClient.setQueryData(['chatMessages', variables.chatroom_id], (oldData: any) => {
+        if (!oldData) return oldData;
+        
+        return {
+          ...oldData,
+          pages: oldData.pages.map((page: any, index: number) => {
+            if (index === 0) {
+              return {
+                ...page,
+                messages: [newMessage, ...page.messages],
+              };
+            }
+            return page;
+          }),
+        };
+      });
+
+      queryClient.setQueryData(['latestChatroomMessage', variables.chatroom_id], newMessage);
+      queryClient.setQueryData(['lastReadMessage', variables.chatroom_id], newMessage);
+      queryClient.invalidateQueries({ queryKey: ['unreadChatroomMessageCount', variables.chatroom_id] });
     },
     ...mutationOptions,
   });

@@ -64,7 +64,7 @@ export function ChatMessageSubscriptionProvider({
       };
     });
       
-    queryClient.setQueryData(['latestChatMessage', chatroomId], newMessage);
+    queryClient.setQueryData(['latestChatroomMessage', chatroomId], newMessage);
     queryClient.invalidateQueries({ queryKey: ['unreadChatroomMessageCount', chatroomId] });
       
     // For system messages, also invalidate participants to update participant list
@@ -86,7 +86,7 @@ export function ChatMessageSubscriptionProvider({
         })),
       };
     });
-    queryClient.invalidateQueries({ queryKey: ['latestChatMessage', chatroomId] });
+    queryClient.invalidateQueries({ queryKey: ['latestChatroomMessage', chatroomId] });
   };
 
   const subscribe = async () => {
@@ -119,7 +119,7 @@ export function ChatMessageSubscriptionProvider({
     await unsubscribe();
     // fetch chat data 
     await Promise.all([
-      queryClient.refetchQueries({ queryKey: ['latestChatMessage'] }),
+      queryClient.refetchQueries({ queryKey: ['latestChatroomMessage'] }),
       queryClient.refetchQueries({ queryKey: ['chatMessages'] }),
       queryClient.refetchQueries({ queryKey: ['unreadChatroomMessageCount'] }),
     ]);

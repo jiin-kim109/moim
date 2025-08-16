@@ -35,24 +35,6 @@ export const localStorage = {
     }
   },
 
-  async setLastReadMessage(chatroomId: string, message: ChatMessage): Promise<void> {
-    try {
-      await AsyncStorage.setItem(`lastReadMessage_${chatroomId}`, JSON.stringify(message));
-    } catch (error) {
-      console.error('Error setting last read message in localStorage:', error);
-    }
-  },
-
-  async getLastReadMessage(chatroomId: string): Promise<ChatMessage | null> {
-    try {
-      const stored = await AsyncStorage.getItem(`lastReadMessage_${chatroomId}`);
-      return stored ? JSON.parse(stored) : null;
-    } catch (error) {
-      console.error('Error getting last read message from localStorage:', error);
-      return null;
-    }
-  },
-
   async getHiddenMessageIds(chatroomId: string): Promise<string[]> {
     try {
       const stored = await AsyncStorage.getItem(`hiddenMessageIds_${chatroomId}`);

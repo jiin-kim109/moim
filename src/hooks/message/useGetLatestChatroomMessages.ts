@@ -44,7 +44,7 @@ export const fetchLatestChatroomMessage = async (
 export function useGetLatestChatroomMessages(chatroomIds: string[]) {
   const latestMessageQueries = useQueries({
     queries: chatroomIds.map((chatroomId) => ({
-      queryKey: ["latestChatMessage", chatroomId],
+      queryKey: ["latestChatroomMessage", chatroomId],
       queryFn: () => fetchLatestChatroomMessage(chatroomId),
       enabled: !!chatroomId,
     })),
@@ -55,7 +55,7 @@ export function useGetLatestChatroomMessages(chatroomIds: string[]) {
 
 export async function prefetchLatestChatroomMessage(queryClient: any, chatroomId: string) {
   await queryClient.prefetchQuery({
-    queryKey: ["latestChatMessage", chatroomId],
+    queryKey: ["latestChatroomMessage", chatroomId],
     queryFn: () => fetchLatestChatroomMessage(chatroomId),
   });
 }

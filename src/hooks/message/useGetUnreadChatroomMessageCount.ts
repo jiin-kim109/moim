@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import supabase from '../../lib/supabase';
-import { localStorage } from '../../lib/localstorage';
+import { fetchLastReadMessage } from './useLastReadMessage';
 
 export type GetUnreadCountError = {
   message: string;
@@ -8,21 +8,21 @@ export type GetUnreadCountError = {
 };
 
 export const fetchUnreadChatroomMessageCount = async (
-  chatroomId: string,
-  userId: string
+  chatroomId: string
 ): Promise<number> => {
-  if (!chatroomId || !userId) {
-    return 0;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error('User is not authenticated');
   }
 
-  const lastReadMessage = await localStorage.getLastReadMessage(chatroomId);
+  const lastReadMessage = await fetchLastReadMessage(chatroomId);
 
   let query = supabase
     .from('chat_messages')
     .select('*')
     .eq('message_type', 'user_message')
     .eq('chatroom_id', chatroomId)
-    .neq('sender_id', userId) // Exclude user's own messages
+    .neq('sender_id', user.id) // Exclude user's own messages
     .eq('is_deleted', false) // Only count non-deleted messages
     .order('created_at', { ascending: false });
 
@@ -46,7 +46,7 @@ export function useGetUnreadChatroomMessageCount(
 ) {
   return useQuery<number, GetUnreadCountError>({
     queryKey: ["unreadChatroomMessageCount", chatroomId],
-    queryFn: () => fetchUnreadChatroomMessageCount(chatroomId, userId),
+    queryFn: () => fetchUnreadChatroomMessageCount(chatroomId),
     enabled: !!chatroomId && !!userId,
     ...queryOptions,
   });
@@ -61,6 +61,6 @@ export const prefetchUnreadChatroomMessageCount = async (
   
   await queryClient.prefetchQuery({
     queryKey: ["unreadChatroomMessageCount", chatroomId],
-    queryFn: () => fetchUnreadChatroomMessageCount(chatroomId, userId),
+    queryFn: () => fetchUnreadChatroomMessageCount(chatroomId),
   });
 };
