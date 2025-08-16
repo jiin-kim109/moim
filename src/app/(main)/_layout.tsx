@@ -2,13 +2,14 @@ import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { ChatMessageSubscriptionProvider, useChatMessageSubscriptionContext } from '@hooks/message/useChatMessageSubscription';
 import { useGetCurrentUserProfile } from '@hooks/useGetCurrentUserProfile';
+import { useNetworkStatus } from '@hooks/useNetworkStatus';
 import { AppState } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 
 function SubscriptionManager() {
   const { reconnect } = useChatMessageSubscriptionContext();
+  const { isConnected } = useNetworkStatus();
 
-  // reconnection listeners (foreground + network restore)
   useEffect(() => {
     const appStateSub = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
@@ -16,17 +17,16 @@ function SubscriptionManager() {
       }
     });
 
-    const netUnsub = NetInfo.addEventListener((state) => {
-      if (state.isConnected) {
-        reconnect();
-      }
-    });
-
     return () => {
       appStateSub.remove();
-      netUnsub();
     };
   }, [reconnect]);
+
+  useEffect(() => {
+    if (isConnected === true) {
+      reconnect();
+    }
+  }, [isConnected, reconnect]);
 
   return null;
 }

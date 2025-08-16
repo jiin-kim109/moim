@@ -5,7 +5,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import supabase from '../lib/supabase';
-import { UserProfile, Address, ChatRoom } from './types';
+import { UserProfile, Address } from './types';
 import { FileHolder } from '@lib/objectstore';
 import { fetchCurrentUserProfile } from "./useGetCurrentUserProfile";
 

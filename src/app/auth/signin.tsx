@@ -17,6 +17,7 @@ import {
   FormMessage,
 } from '@components/ui/form';
 import { H1, P, Muted } from '@components/ui/typography';
+import Logo from '@lib/icons/Logo';
 
 const signInSchema = z.object({
   email: z
@@ -98,11 +99,8 @@ export default function SignInScreen() {
           <View className="flex-1 justify-center px-8">
             <View className="w-full max-w-sm mx-auto">
               {/* Header */}
-              <View className="text-center mb-8">
-                <H1 className="text-center">Moim</H1>
-                <P className="text-center text-muted-foreground">
-                  Sign in to connect with communities
-                </P>
+              <View className="items-center mb-8">
+                <Logo size="xl" className="mb-4" />
               </View>
               
               {/* Email/Password Form */}

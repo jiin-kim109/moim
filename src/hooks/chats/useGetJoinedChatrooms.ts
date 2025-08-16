@@ -47,6 +47,7 @@ export function useGetJoinedChatrooms(
     queryFn: () => fetchJoinedChatrooms(userId),
     enabled: !!userId,
     staleTime: Infinity,
+    gcTime: Infinity,
     ...queryOptions,
   });
 }

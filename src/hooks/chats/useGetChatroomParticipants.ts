@@ -18,10 +18,7 @@ export const fetchChatroomParticipants = async (chatroomId: string): Promise<Cha
 
   const { data, error } = await supabase
     .from('chatroom_participants')
-    .select(`
-      *,
-      user:user_profile(*)
-    `)
+    .select('*')
     .eq('chatroom_id', chatroomId)
     .order('joined_at', { ascending: true });
 

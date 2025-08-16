@@ -41,6 +41,7 @@ export function useGetCurrentUserProfile(
     queryKey: ["userProfile"],
     queryFn: fetchCurrentUserProfile,
     staleTime: Infinity,
+    gcTime: Infinity,
     ...queryOptions,
   });
 } 

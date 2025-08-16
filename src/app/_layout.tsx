@@ -12,7 +12,6 @@ import { Platform } from 'react-native';
 import { Toaster } from 'sonner-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-
 const LIGHT_THEME: Theme = {
   ...DefaultTheme,
   colors: NAV_THEME.light,
@@ -35,18 +34,8 @@ const queryClient = new QueryClient({
 
 export default function RootLayout() {
   const hasMounted = React.useRef(false);
-  const { colorScheme, isDarkColorScheme } = useColorScheme();
+  const { isDarkColorScheme } = useColorScheme();
   const [isColorSchemeLoaded, setIsColorSchemeLoaded] = React.useState(false);
-
-  // Copy function for React Query DevTools
-  const onCopy = async (text: string) => {
-    try {
-      await Clipboard.setStringAsync(text);
-      return true;
-    } catch {
-      return false;
-    }
-  };
 
   useIsomorphicLayoutEffect(() => {
     if (hasMounted.current) {
@@ -70,7 +59,14 @@ export default function RootLayout() {
             <Stack.Screen name="auth" />
           </Stack>
           <Toaster />
-          {__DEV__ && <DevToolsBubble queryClient={queryClient} onCopy={onCopy} />}
+          {__DEV__ && <DevToolsBubble queryClient={queryClient} onCopy={async (text) => {
+            try {
+              await Clipboard.setStringAsync(text);
+              return true;
+            } catch {
+              return false;
+            }
+          }} />}
         </QueryClientProvider>
       </ThemeProvider>
     </GestureHandlerRootView>

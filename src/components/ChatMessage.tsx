@@ -22,9 +22,9 @@ interface SystemMessageProps {
 
 function MessageAvatar({ message }: { message: ChatMessageType }) {
   return (
-    <Avatar className="w-14 h-14 mr-3 !rounded-2xl" alt={`${message.sender_nickname}`}>
-      {message.sender?.profile_image_url ? (
-        <AvatarImage source={{ uri: message.sender.profile_image_url }} />
+    <Avatar className="w-14 h-14 mr-3 !rounded-2xl" alt={`${message.sender_info.nickname}`}>
+      {message.sender_info.profile_image_url ? (
+        <AvatarImage source={{ uri: message.sender_info.profile_image_url }} />
       ) : (
         <AvatarFallback className="bg-gray-100 !rounded-2xl">
           <User size={16} color="#9CA3AF" />
@@ -37,7 +37,7 @@ function MessageAvatar({ message }: { message: ChatMessageType }) {
 function MessageNickname({ message }: { message: ChatMessageType }) {
   return (
     <Text className="text-base text-gray-600 pl-1 mb-2">
-      {message.sender_nickname}
+      {message.sender_info.nickname}
     </Text>
   );
 }

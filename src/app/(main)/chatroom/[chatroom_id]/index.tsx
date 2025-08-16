@@ -369,7 +369,7 @@ export default function ChatroomScreen() {
               {selectedMessage && (
                 <View className="mt-3 px-3 py-2 bg-gray-50 rounded-lg">
                   <Text className="text-gray-800 text-sm font-medium mb-1">
-                    From: {selectedMessage.sender_nickname}
+                    From: {selectedMessage.sender_info.nickname}
                   </Text>
                   <Text className="text-gray-600 text-sm">
                     "{selectedMessage.message.substring(0, 50)}{selectedMessage.message.length > 50 ? '...' : ''}"

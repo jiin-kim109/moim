@@ -12,7 +12,6 @@ export type Address = {
 export interface UserProfile {
   id: string;
   username: string;
-  profile_image_url?: string | null;
   is_onboarded: boolean;
   neighborhood_distance_km: number;
   address?: Address | null;
@@ -22,7 +21,7 @@ export interface ChatRoomParticipant {
   user_id: string;
   nickname: string | null;
   joined_at: string;
-  user: UserProfile;
+  profile_image_url?: string | null;
 }
 
 export interface ChatRoom {
@@ -49,8 +48,7 @@ export interface ChatMessage {
   is_edited: boolean;
   created_at: string;
   updated_at: string;
-  sender: UserProfile;
-  sender_nickname: string;
+  sender_info: ChatRoomParticipant;
 }
 
 export type ReportType = 'chatroom' | 'message' | 'user';
@@ -62,4 +60,13 @@ export type Report = {
   reason: string | null;
   payload: Record<string, unknown>;
   created_at: string;
+};
+
+export type BannedUser = {
+  id: string;
+  chatroom_id: string;
+  user_id: string;
+  nickname: string;
+  profile_image_url: string | null;
+  banned_at: string;
 };

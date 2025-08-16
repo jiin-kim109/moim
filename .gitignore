@@ -38,3 +38,11 @@ yarn-error.*
 
 # env
 .env
+
+# build
+build-*
+build/
+ios/
+android/
+
+.vscode/

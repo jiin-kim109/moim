@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import supabase from '@lib/supabase';
-import { fetchCurrentUserProfile, prefetchCurrentUserProfile } from '@hooks/useGetCurrentUserProfile';
+import { prefetchCurrentUserProfile } from '@hooks/useGetCurrentUserProfile';
 import { prefetchRecommendedChatrooms } from '@hooks/chats/useGetRecommendedChatrooms';
 import { prefetchJoinedChatrooms } from '@hooks/chats/useGetJoinedChatrooms';
 import { ChatRoom, UserProfile } from '@hooks/types';
@@ -12,13 +11,19 @@ import { prefetchUnreadChatroomMessageCount } from '@hooks/message/useGetUnreadC
 import { prefetchChatroomParticipants } from '@hooks/chats/useGetChatroomParticipants';
 import { prefetchChatMessages } from '@hooks/message/useGetChatMessages';
 import { prefetchChatroom } from '@hooks/chats/useGetChatroom';
+import { usePushNotificationToken } from '@hooks/usePushNotificationToken';
+import SplashScreen from '@components/Splash';
 
 export default function SplashPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(true);
+  const { register: registerPushNotification } = usePushNotificationToken();
 
   async function initializeApp(userId: string): Promise<UserProfile | null> {
+
+    await registerPushNotification(userId);
+
     await prefetchJoinedChatrooms(queryClient, userId);
 
     const joinedChatrooms = await queryClient.getQueryData(["joinedChatrooms"]) as ChatRoom[];
@@ -82,34 +87,5 @@ export default function SplashPage() {
     return null;
   }
   
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Moim</Text>
-      <Text style={styles.subtitle}>Connecting Communities</Text>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#007AFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    textAlign: 'center',
-    color: '#fff',
-  },
-  subtitle: {
-    fontSize: 18,
-    color: '#fff',
-    marginBottom: 32,
-    textAlign: 'center',
-    opacity: 0.9,
-  },
-}); 
+  return <SplashScreen />;
+} 

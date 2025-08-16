@@ -12,7 +12,7 @@ import { useGetCurrentUserProfile } from '@hooks/useGetCurrentUserProfile';
 import { useGetChatroom } from '@hooks/chats/useGetChatroom';
 import { useGetBannedUsers } from '@hooks/chats/useGetBannedUsers';
 import { useKickUserFromChatroom } from '@hooks/chats/useKickUserFromChatroom';
-import { useBanUserFromChatroom, useUnbanUserFromChatroom } from '@hooks/chats/useBanUserFromChatroom';
+import { useBanUserFromChatroom } from '@hooks/chats/useBanUserFromChatroom';
 import { useTransferHost } from '@hooks/chats/useTransferHost';
 import { ChatRoomParticipant } from '@hooks/types';
 import { useExitChatroom } from '@hooks/chats/useExitChatroom';
@@ -35,8 +35,8 @@ function ParticipantItem({ participant, isCurrentUser, isHost, hostId, onActionP
   return (
     <View className="flex-row items-center py-3 px-6 relative">
       <Avatar className="w-12 h-12 mr-3 !rounded-2xl" alt={participant.nickname || 'User'}>
-        {participant.user?.profile_image_url ? (
-          <AvatarImage source={{ uri: participant.user.profile_image_url }} />
+        {participant.profile_image_url ? (
+          <AvatarImage source={{ uri: participant.profile_image_url }} />
         ) : (
           <AvatarFallback className="bg-gray-100 !rounded-2xl">
             <User size={16} color="#9CA3AF" />
@@ -46,7 +46,7 @@ function ParticipantItem({ participant, isCurrentUser, isHost, hostId, onActionP
       <View className="flex-1">
         <View className="flex-row items-center gap-2">
           <Text className="text-base font-medium text-gray-900">
-            {participant.nickname || participant.user?.username || 'Unknown User'}
+            {participant.nickname || 'Unknown User'}
           </Text>
           {participant.user_id === hostId && (
             <Crown size={16} color="#F59E0B" />
@@ -85,8 +85,6 @@ export default function ChatroomParticipantsMenuScreen() {
   const kickUserMutation = useKickUserFromChatroom();
 
   const banUserMutation = useBanUserFromChatroom();
-
-  const unbanUserMutation = useUnbanUserFromChatroom();
 
   const transferHostMutation = useTransferHost();
   const exitChatroomMutation = useExitChatroom();
@@ -162,14 +160,7 @@ export default function ChatroomParticipantsMenuScreen() {
     );
   }, [selectedParticipant, banUserMutation, chatroom_id, handleCloseBottomSheet]);
 
-  const handleUnbanUser = useCallback((bannedUser: any) => {
-    unbanUserMutation.mutate({
-      chatroom_id: chatroom_id as string,
-      user_id: bannedUser.user_id,
-    });
-  }, [unbanUserMutation, chatroom_id]);
-
-  const handleChangeNickname = useCallback(() => {
+  const handleEditProfile = useCallback(() => {
     handleCloseBottomSheet();
     router.push(`/chatroom/${chatroom_id}/nickname`);
   }, [handleCloseBottomSheet, router, chatroom_id]);
@@ -320,8 +311,8 @@ export default function ChatroomParticipantsMenuScreen() {
               {selectedParticipant && (
                 <View className="flex-row items-center py-3 px-3">
                   <Avatar className="w-14 h-14 mr-3 !rounded-2xl" alt={selectedParticipant.nickname || 'User'}>
-                    {selectedParticipant.user?.profile_image_url ? (
-                      <AvatarImage source={{ uri: selectedParticipant.user.profile_image_url }} />
+                    {selectedParticipant.profile_image_url ? (
+                      <AvatarImage source={{ uri: selectedParticipant.profile_image_url }} />
                     ) : (
                       <AvatarFallback className="bg-gray-100 !rounded-2xl">
                         <User size={16} color="#9CA3AF" />
@@ -330,7 +321,7 @@ export default function ChatroomParticipantsMenuScreen() {
                   </Avatar>
                   <View className="flex-1">
                     <Text className="text-lg font-medium text-gray-900">
-                      {selectedParticipant.nickname || selectedParticipant.user?.username || 'Unknown User'}
+                      {selectedParticipant.nickname || 'Unknown User'}
                     </Text>
                   </View>
                 </View>
@@ -339,16 +330,16 @@ export default function ChatroomParticipantsMenuScreen() {
 
                         {/* Action Buttons */}
             <View className="gap-4">
-              {/* Change Nickname Button - Only for current user */}
+              {/* Edit Profile Button - Only for current user */}
               {selectedParticipant && selectedParticipant.user_id === currentUserId && (
                 <Button
-                  onPress={handleChangeNickname}
+                  onPress={handleEditProfile}
                   variant="outline"
                   className="w-full"
                 >
                   <View className="flex-row items-center justify-center gap-2">
                     <Edit size={18} color="#374151" />
-                    <Text className="text-gray-700 font-medium">Change Nickname</Text>
+                    <Text className="text-gray-700 font-medium">Edit Profile</Text>
                   </View>
                 </Button>
               )}

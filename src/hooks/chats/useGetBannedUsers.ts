@@ -4,16 +4,7 @@ import {
   UseQueryResult,
 } from "@tanstack/react-query";
 import supabase from '../../lib/supabase';
-import { UserProfile } from '../types';
-
-export type BannedUser = {
-  id: string;
-  chatroom_id: string;
-  user_id: string;
-  last_nickname: string;
-  banned_at: string;
-  user: UserProfile;
-};
+import { BannedUser } from "@hooks/types";
 
 export type BannedUsersError = {
   message: string;
@@ -27,10 +18,7 @@ export const fetchBannedUsers = async (chatroomId: string): Promise<BannedUser[]
 
   const { data, error } = await supabase
     .from('banned_users')
-    .select(`
-      *,
-      user:user_id(*)
-    `)
+    .select('*')
     .eq('chatroom_id', chatroomId)
     .order('banned_at', { ascending: false });
 

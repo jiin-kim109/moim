@@ -30,7 +30,7 @@ export type BanUserResult = {
   id: string;
   chatroom_id: string;
   user_id: string;
-  last_nickname: string;
+  nickname: string;
   banned_at: string;
 };
 
@@ -45,7 +45,7 @@ export const banUserFromChatroom = async (
   // First, get the user's nickname from chatroom_participants
   const { data: participant, error: fetchError } = await supabase
     .from('chatroom_participants')
-    .select('nickname')
+    .select('*')
     .eq('chatroom_id', data.chatroom_id)
     .eq('user_id', data.user_id)
     .single();
@@ -75,7 +75,8 @@ export const banUserFromChatroom = async (
     .insert({
       chatroom_id: data.chatroom_id,
       user_id: data.user_id,
-      last_nickname: participant.nickname || 'Unknown User',
+      nickname: participant.nickname,
+      profile_image_url: participant.profile_image_url,
     })
     .select('*')
     .single();

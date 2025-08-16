@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { View } from 'react-native';
-import { Compass, MessageCircle, User } from 'lucide-react-native';
+import { Compass, MessageCircle } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
@@ -27,7 +27,7 @@ export default function TabLayout() {
           paddingTop: 10,
           flex: 1,
         },
-        tabBarActiveTintColor: '#3b82f6',
+        tabBarActiveTintColor: '#f97316', // orange-500 (primary)
         tabBarInactiveTintColor: '#6b7280',
         tabBarLabelStyle: {
           fontSize: 14,
@@ -46,10 +46,10 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <View style={{
               borderWidth: focused ? 2 : 1,
-              borderColor: focused ? '#3b82f6' : '#d1d5db',
+              borderColor: focused ? '#f97316' : '#d1d5db', // orange-500 when focused
               borderRadius: 12,
               padding: 8,
-              backgroundColor: focused ? '#eff6ff' : 'transparent',
+              backgroundColor: focused ? '#fed7aa' : 'transparent', // orange-200 when focused
             }}>
               <Compass size={20} color={color} />
             </View>
@@ -63,33 +63,17 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <View style={{
               borderWidth: focused ? 2 : 1,
-              borderColor: focused ? '#3b82f6' : '#d1d5db',
+              borderColor: focused ? '#f97316' : '#d1d5db', // orange-500 when focused
               borderRadius: 12,
               padding: 8,
-              backgroundColor: focused ? '#eff6ff' : 'transparent',
+              backgroundColor: focused ? '#fed7aa' : 'transparent', // orange-200 when focused
             }}>
               <MessageCircle size={20} color={color} />
             </View>
           ),
         }}
       />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color, focused }) => (
-            <View style={{
-              borderWidth: focused ? 2 : 1,
-              borderColor: focused ? '#3b82f6' : '#d1d5db',
-              borderRadius: 12,
-              padding: 8,
-              backgroundColor: focused ? '#eff6ff' : 'transparent',
-            }}>
-              <User size={20} color={color} />
-            </View>
-          ),
-        }}
-      />
+
     </Tabs>
   );
 } 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FlatList, View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Image } from './ui/image';
 import { Text } from './ui/text';
@@ -71,6 +71,7 @@ export default function OpenChatRoomFeed({ onChatRoomPress, onChatRoomJoin }: Op
   const currentUserId = userProfile?.id;
   const [selectedChatRoom, setSelectedChatRoom] = useState<ChatRoom | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
+  const flatListRef = useRef<FlatList>(null);
 
   const { 
     data, 
@@ -90,6 +91,15 @@ export default function OpenChatRoomFeed({ onChatRoomPress, onChatRoomJoin }: Op
 
   // Flatten the paginated data
   const chatRooms = data?.pages.flatMap((page) => (page as RecommendedChatroomsPage).chatrooms) || [];
+
+  // Scroll to top when data is refreshed
+  useEffect(() => {
+    if (chatRooms.length > 0 && flatListRef.current) {
+      setTimeout(() => {
+        flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+      }, 100);
+    }
+  }, [(data?.pages?.[0] as RecommendedChatroomsPage)?.chatrooms]); // Trigger when first page changes or location changes
 
   const handleChatRoomPress = (chatRoom: ChatRoom) => {
     setSelectedChatRoom(chatRoom);
@@ -157,6 +167,7 @@ export default function OpenChatRoomFeed({ onChatRoomPress, onChatRoomJoin }: Op
   return (
     <View className="flex-1 bg-white">
       <FlatList
+        ref={flatListRef}
         data={chatRooms}
         renderItem={renderChatRoomItem}
         keyExtractor={(item) => item.id}

@@ -234,7 +234,7 @@ export default function OnboardingScreen() {
               <View
                 key={index}
                 className={`flex-1 h-1 rounded-full ${
-                  index <= currentStep ? 'bg-blue-500' : 'bg-gray-200'
+                  index <= currentStep ? 'bg-primary' : 'bg-gray-200'
                 }`}
               />
             ))}
@@ -257,9 +257,9 @@ export default function OnboardingScreen() {
             // Username step - only Continue button
             <TouchableOpacity
               onPress={handleNext}
-              className="bg-blue-500 py-4 px-6 rounded-lg flex-row items-center justify-center"
+              className="bg-primary py-4 px-6 rounded-lg flex-row items-center justify-center"
             >
-              <Text className="text-white font-semibold text-lg mr-2">Continue</Text>
+              <Text className="text-primary-foreground font-semibold text-lg mr-2">Continue</Text>
               <ChevronRight size={20} color="white" />
             </TouchableOpacity>
           ) : (
@@ -275,9 +275,9 @@ export default function OnboardingScreen() {
               
               <TouchableOpacity
                 onPress={handleNext}
-                className="flex-1 bg-blue-500 py-4 px-6 rounded-lg flex-row items-center justify-center"
+                className="flex-1 bg-primary py-4 px-6 rounded-lg flex-row items-center justify-center"
               >
-                <Text className="text-white font-semibold text-lg mr-2">Finish</Text>
+                <Text className="text-primary-foreground font-semibold text-lg mr-2">Finish</Text>
                 <ChevronRight size={20} color="white" />
               </TouchableOpacity>
             </View>

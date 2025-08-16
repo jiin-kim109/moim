@@ -15,9 +15,9 @@ interface BannedUserItemProps {
 function BannedUserItem({ bannedUser, onUnban }: BannedUserItemProps) {
   return (
     <View className="flex-row items-center py-3 px-6 relative">
-      <Avatar className="w-12 h-12 mr-3 !rounded-2xl" alt={bannedUser.last_nickname || 'User'}>
-        {bannedUser.user?.profile_image_url ? (
-          <AvatarImage source={{ uri: bannedUser.user.profile_image_url }} />
+      <Avatar className="w-12 h-12 mr-3 !rounded-2xl" alt={bannedUser.nickname || 'User'}>
+        {bannedUser.profile_image_url ? (
+          <AvatarImage source={{ uri: bannedUser.profile_image_url }} />
         ) : (
           <AvatarFallback className="bg-gray-100 !rounded-2xl">
             <User size={16} color="#9CA3AF" />
@@ -26,7 +26,7 @@ function BannedUserItem({ bannedUser, onUnban }: BannedUserItemProps) {
       </Avatar>
       <View className="flex-1">
         <Text className="text-base font-medium text-gray-900">
-          {bannedUser.last_nickname || bannedUser.user?.username || 'Unknown User'}
+          {bannedUser.nickname}
         </Text>
         <Text className="text-sm text-gray-500">
           Banned on {new Date(bannedUser.banned_at).toLocaleDateString()}

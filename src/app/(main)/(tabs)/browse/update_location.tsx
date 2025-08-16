@@ -10,7 +10,6 @@ import { Text } from '@components/ui/text';
 import LocationInput from '@components/LocationInput';
 import { useGetCurrentUserProfile } from '@hooks/useGetCurrentUserProfile';
 import { useUpdateUserProfile } from '@hooks/useUpdateUserProfile';
-import supabase from '@lib/supabase';
 
 import {
   Form,
@@ -20,6 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@components/ui/form';
+import { useDebouncedFunction } from '@lib/utils';
 
 // Form schema for updating location
 const updateLocationSchema = z.object({
@@ -48,6 +48,8 @@ export default function UpdateLocationScreen() {
   
   // Get current user profile
   const { data: userProfile } = useGetCurrentUserProfile();
+
+  const goBack = useDebouncedFunction(() => router.back());
 
   const form = useForm<UpdateLocationFormValues>({
     resolver: zodResolver(updateLocationSchema),
@@ -79,7 +81,7 @@ export default function UpdateLocationScreen() {
       });
 
       toast.success('Location updated successfully!');
-      router.replace('/profile');
+      router.back();
     } catch (error: any) {
       console.error('Failed to update location:', error);
       toast.error('Failed to update location. Please try again.');
@@ -92,7 +94,7 @@ export default function UpdateLocationScreen() {
         {/* Header */}
         <View className="flex-row items-center justify-between px-4 py-3">
           <TouchableOpacity
-            onPress={() => router.replace('/profile')}
+            onPress={goBack}
             className="p-2 -ml-2"
           >
             <ChevronLeft size={24} color="#000" />

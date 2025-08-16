@@ -57,6 +57,8 @@ export function useGetChatroom(
     queryKey: ["chatroom", chatroomId],
     queryFn: () => fetchChatroom(chatroomId),
     enabled: !!chatroomId,
+    staleTime: Infinity,
+    gcTime: Infinity,
     ...queryOptions,
   });
 }
