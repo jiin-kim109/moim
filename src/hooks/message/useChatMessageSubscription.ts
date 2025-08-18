@@ -18,6 +18,14 @@ export type MessageDeletedEventPayload = {
   message_id: string;
 };
 
+export type LastReadMessageUpdatedEventPayload = {
+  type: 'last_read_message_updated';
+  chatroom_id: string;
+  updated_by_user_id: string;
+  old_last_read_message_id: string | null;
+  new_last_read_message_id: string | null;
+};
+
 interface ChatMessageSubscriptionContextType {
   subscribe: () => void;
   reconnect: () => Promise<void>;
@@ -89,6 +97,44 @@ export function ChatMessageSubscriptionProvider({
     queryClient.invalidateQueries({ queryKey: ['latestChatroomMessage', chatroomId] });
   };
 
+  const handleLastReadMessageUpdatedEvent = async (payload: LastReadMessageUpdatedEventPayload) => {
+    console.log('test');
+    const { 
+      chatroom_id: chatroomId, 
+      old_last_read_message_id: oldMessageId, 
+      new_last_read_message_id: newMessageId 
+    } = payload;
+    
+    const [oldMessage, newMessage] = await Promise.all([
+      oldMessageId ? fetchChatMessage(oldMessageId) : null,
+      newMessageId ? fetchChatMessage(newMessageId) : null,
+    ]);
+
+    queryClient.setQueryData(['chatMessages', chatroomId], (oldData: any) => {
+      if (!oldData || !newMessage) return oldData;
+
+      const oldTimestamp = oldMessage?.created_at;
+      const newTimestamp = newMessage.created_at;
+
+      return {
+        ...oldData,
+        pages: oldData.pages.map((page: any) => ({
+          ...page,
+          messages: page.messages.map((msg: ChatMessage) => {
+            // Decrement unread count for messages between old and new timestamps
+            if (oldTimestamp && msg.created_at > oldTimestamp && msg.created_at <= newTimestamp) {
+              return { ...msg, unread_count: Math.max(0, msg.unread_count - 1) };
+            } else if (!oldTimestamp && msg.created_at <= newTimestamp) {
+              // If no old message, decrement for all messages up to new message
+              return { ...msg, unread_count: Math.max(0, msg.unread_count - 1) };
+            }
+            return msg;
+          }),
+        })),
+      };
+    });
+  };
+
   const subscribe = async () => {
     if (channelRef.current) {
       await unsubscribe();
@@ -102,6 +148,7 @@ export function ChatMessageSubscriptionProvider({
     channel
       .on('broadcast', { event: 'message_created' }, (payload) => handleMessageCreatedEvent(payload.payload as MessageCreatedEventPayload))
       .on('broadcast', { event: 'message_deleted' }, (payload) => handleMessageDeletedEvent(payload.payload as MessageDeletedEventPayload))
+      .on('broadcast', { event: 'last_read_message_updated' }, (payload) => handleLastReadMessageUpdatedEvent(payload.payload as LastReadMessageUpdatedEventPayload))
       .subscribe();
     channelRef.current = channel;
 

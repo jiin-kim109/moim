@@ -19,7 +19,7 @@ export type ChatMessagesPage = {
 const PAGE_SIZE = 30;
 
 // Fetch chatroom participants for the chatroom
-const fetchChatroomParticipants = async (chatroomId: string): Promise<Map<string, ChatRoomParticipant>> => {
+export const fetchChatroomParticipants = async (chatroomId: string): Promise<Map<string, ChatRoomParticipant>> => {
   const { data, error } = await supabase
     .from('chatroom_participants')
     .select('*')

@@ -20,15 +20,15 @@ export const fetchLastReadMessage = async (
     throw new Error('User is not authenticated');
   }
 
-  const { data: participant, error: participantError } = await supabase
-    .from('chatroom_participants')
+  const { data: lastReadRecord, error: lastReadError } = await supabase
+    .from('last_read_messages')
     .select('last_read_message_id')
     .eq('chatroom_id', chatroomId)
     .eq('user_id', user.id)
     .single();
 
-  if (participantError || !participant?.last_read_message_id) {
-    throw new Error('Participant not found');
+  if (lastReadError || !lastReadRecord?.last_read_message_id) {
+    return null; // No last read message found
   }
 
   const { data: message, error: messageError } = await supabase
@@ -39,7 +39,7 @@ export const fetchLastReadMessage = async (
         chatroom_participants!inner(*)
       )
     `)
-    .eq('id', participant.last_read_message_id)
+    .eq('id', lastReadRecord.last_read_message_id)
     .single();
 
   if (messageError) {
@@ -77,10 +77,14 @@ export function useSaveLastReadMessage() {
       }
 
       const { error } = await supabase
-        .from('chatroom_participants')
-        .update({ last_read_message_id: messageId })
-        .eq('chatroom_id', chatroomId)
-        .eq('user_id', user.id);
+        .from('last_read_messages')
+        .upsert({
+          chatroom_id: chatroomId,
+          user_id: user.id,
+          last_read_message_id: messageId,
+        }, {
+          onConflict: 'chatroom_id,user_id'
+        });
 
       if (error) {
         throw new Error(`Failed to save last read message: ${error.message}`);

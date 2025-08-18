@@ -84,6 +84,8 @@ export default function SignInScreen() {
         setAuthError(error.message);
         return;
       }
+
+      router.replace('/');
     } catch (error) {
       console.error('Google sign-in error:', error);
       setAuthError('An unexpected error occurred');

@@ -7,7 +7,7 @@ import { prefetchRecommendedChatrooms } from '@hooks/chats/useGetRecommendedChat
 import { prefetchJoinedChatrooms } from '@hooks/chats/useGetJoinedChatrooms';
 import { ChatRoom, UserProfile } from '@hooks/types';
 import { prefetchLatestChatroomMessage } from '@hooks/message/useGetLatestChatroomMessages';
-import { prefetchUnreadChatroomMessageCount } from '@hooks/message/useGetUnreadChatroomMessageCount';
+import { prefetchUnreadChatroomMessageCount } from '@hooks/chats/useGetUnreadChatroomMessageCount';
 import { prefetchChatroomParticipants } from '@hooks/chats/useGetChatroomParticipants';
 import { prefetchChatMessages } from '@hooks/message/useGetChatMessages';
 import { prefetchChatroom } from '@hooks/chats/useGetChatroom';
@@ -21,9 +21,6 @@ export default function SplashPage() {
   const { register: registerPushNotification } = usePushNotificationToken();
 
   async function initializeApp(userId: string): Promise<UserProfile | null> {
-
-    await registerPushNotification(userId);
-
     await prefetchJoinedChatrooms(queryClient, userId);
 
     const joinedChatrooms = await queryClient.getQueryData(["joinedChatrooms"]) as ChatRoom[];
@@ -44,6 +41,7 @@ export default function SplashPage() {
       ...prefetchPromises,
       prefetchRecommendedChatrooms(queryClient, userId),
       prefetchCurrentUserProfile(queryClient),
+      registerPushNotification(userId),
     ]);
 
     return await queryClient.getQueryData(["userProfile"]) as UserProfile;

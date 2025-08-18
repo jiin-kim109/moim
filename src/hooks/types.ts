@@ -22,7 +22,6 @@ export interface ChatRoomParticipant {
   nickname: string | null;
   joined_at: string;
   profile_image_url?: string | null;
-  last_read_message_id?: string | null;
 }
 
 export interface ChatRoom {
@@ -49,6 +48,7 @@ export interface ChatMessage {
   is_edited: boolean;
   created_at: string;
   updated_at: string;
+  unread_count: number;
   sender_info: ChatRoomParticipant;
 }
 

@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-query";
 import supabase from '../../lib/supabase';
 import { ChatMessage } from '../types';
+import { useSaveLastReadMessage } from "./useLastReadMessage";
 
 export type SendChatMessageError = {
   message: string;
@@ -50,6 +51,7 @@ export function useSendChatMessage(
   mutationOptions?: Partial<UseMutationOptions<ChatMessage, SendChatMessageError, SendChatMessageData>>,
 ): UseMutationResult<ChatMessage, SendChatMessageError, SendChatMessageData> {
   const queryClient = useQueryClient();
+  const saveLastReadMessageMutation = useSaveLastReadMessage();
 
   return useMutation<ChatMessage, SendChatMessageError, SendChatMessageData>({
     mutationFn: sendChatMessage,
@@ -64,7 +66,7 @@ export function useSendChatMessage(
             if (index === 0) {
               return {
                 ...page,
-                messages: [newMessage, ...page.messages],
+                messages: [{ ...newMessage }, ...page.messages],
               };
             }
             return page;
@@ -72,8 +74,12 @@ export function useSendChatMessage(
         };
       });
 
+      saveLastReadMessageMutation.mutate({
+        chatroomId: variables.chatroom_id,
+        messageId: newMessage.id,
+      });
+
       queryClient.setQueryData(['latestChatroomMessage', variables.chatroom_id], newMessage);
-      queryClient.setQueryData(['lastReadMessage', variables.chatroom_id], newMessage);
       queryClient.invalidateQueries({ queryKey: ['unreadChatroomMessageCount', variables.chatroom_id] });
     },
     ...mutationOptions,

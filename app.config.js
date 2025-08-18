@@ -21,6 +21,7 @@ export default {
       }
     },
     android: {
+      package: "com.moim",
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#ffffff"

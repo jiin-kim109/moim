@@ -6,7 +6,7 @@ import { Badge } from './ui/badge';
 import { ChatRoom } from '../hooks/types';
 import { formatTimeForChatRoomList } from '../lib/utils';
 import { useGetJoinedChatrooms } from '../hooks/chats/useGetJoinedChatrooms';
-import { useGetUnreadChatroomMessageCount } from '../hooks/message/useGetUnreadChatroomMessageCount';
+import { useGetUnreadChatroomMessageCount } from '../hooks/chats/useGetUnreadChatroomMessageCount';
 import { useGetLatestChatroomMessages } from '../hooks/message/useGetLatestChatroomMessages';
 import { ChatMessage } from '../hooks/types';
 import { useGetCurrentUserProfile } from '@hooks/useGetCurrentUserProfile';

@@ -131,6 +131,11 @@ function ChatMessage({ message, isCurrentUser = false, onLongPress }: ChatMessag
           <View className={`flex-row items-end ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
             {isCurrentUser && (
               <View className="items-end mr-2">
+                {message.unread_count > 0 && (
+                  <Text className="text-xs text-orange-500 font-medium mb-1">
+                    {message.unread_count}
+                  </Text>
+                )}
                 {message.is_edited && (
                   <Text className="text-xs italic text-gray-400">
                     edited
@@ -159,6 +164,11 @@ function ChatMessage({ message, isCurrentUser = false, onLongPress }: ChatMessag
             </TouchableOpacity>
             {!isCurrentUser && (
               <View className="items-start ml-2">
+                {message.unread_count > 0 && (
+                  <Text className="text-xs text-orange-500 font-medium mb-1">
+                    {message.unread_count}
+                  </Text>
+                )}
                 {message.is_edited && (
                   <Text className="text-xs italic text-gray-400">
                     edited
@@ -184,6 +194,7 @@ export default React.memo(ChatMessage, (prevProps, nextProps) => {
     prevProps.message.message === nextProps.message.message &&
     prevProps.message.is_deleted === nextProps.message.is_deleted &&
     prevProps.message.is_edited === nextProps.message.is_edited &&
+    prevProps.message.unread_count === nextProps.message.unread_count &&
     prevProps.isCurrentUser === nextProps.isCurrentUser
   );
 }); 

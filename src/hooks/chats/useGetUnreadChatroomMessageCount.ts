@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import supabase from '../../lib/supabase';
-import { fetchLastReadMessage } from './useLastReadMessage';
+import supabase from '@lib/supabase';
+import { fetchLastReadMessage } from '../message/useLastReadMessage';
 
 export type GetUnreadCountError = {
   message: string;
