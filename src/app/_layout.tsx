@@ -11,6 +11,7 @@ import { DarkTheme, DefaultTheme, Theme, ThemeProvider } from '@react-navigation
 import { Platform } from 'react-native';
 import { Toaster } from 'sonner-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { PushNotificationProvider } from '@hooks/usePushNotificationToken';
 
 const LIGHT_THEME: Theme = {
   ...DefaultTheme,
@@ -53,20 +54,22 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={isDarkColorScheme ? DARK_THEME : LIGHT_THEME}>
         <QueryClientProvider client={queryClient}>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="index" />
-            <Stack.Screen name="(main)" />
-            <Stack.Screen name="auth" />
-          </Stack>
-          <Toaster />
-          {__DEV__ && <DevToolsBubble queryClient={queryClient} onCopy={async (text) => {
-            try {
-              await Clipboard.setStringAsync(text);
-              return true;
-            } catch {
-              return false;
-            }
-          }} />}
+          <PushNotificationProvider>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="(main)" />
+              <Stack.Screen name="auth" />
+            </Stack>
+            <Toaster />
+            {__DEV__ && <DevToolsBubble queryClient={queryClient} onCopy={async (text) => {
+              try {
+                await Clipboard.setStringAsync(text);
+                return true;
+              } catch {
+                return false;
+              }
+            }} />}
+          </PushNotificationProvider>
         </QueryClientProvider>
       </ThemeProvider>
     </GestureHandlerRootView>

@@ -1,13 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { View, SafeAreaView, Image, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import React, { useState } from 'react';
+import { View, SafeAreaView, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import {
-  GoogleSignin,
-  GoogleSigninButton,
-} from '@react-native-google-signin/google-signin';
 import supabase from '@lib/supabase';
 import { Button } from '@components/ui/button';
 import { Text } from '@components/ui/text';
@@ -20,87 +16,73 @@ import {
   FormLabel,
   FormMessage,
 } from '@components/ui/form';
-import { Muted } from '@components/ui/typography';
+import { H1, P, Muted } from '@components/ui/typography';
 import Logo from '@lib/icons/Logo';
+import { useCheckEmailExists } from '@hooks/useCheckEmailExists';
 
-const signInSchema = z.object({
+const signUpSchema = z.object({
   email: z
-    .email()
-    .min(1, 'Email is required'),
+    .string()
+    .min(1, 'Email is required')
+    .email('Please enter a valid email address'),
   password: z
     .string()
-    .min(1, 'Password is required'),
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain at least one uppercase letter, one lowercase letter, and one number'),
+  confirmPassword: z
+    .string()
+    .min(1, 'Please confirm your password'),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
 });
 
-type SignInFormValues = z.infer<typeof signInSchema>;
+type SignUpFormValues = z.infer<typeof signUpSchema>;
 
-export default function SignInScreen() {
+export default function SignUpScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  useEffect(() => {
-    GoogleSignin.configure({
-      iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    })
-  }, []);
+  const checkEmailExistsMutation = useCheckEmailExists();
 
-  const form = useForm<SignInFormValues>({
-    resolver: zodResolver(signInSchema),
+  const form = useForm<SignUpFormValues>({
+    resolver: zodResolver(signUpSchema),
     defaultValues: {
       email: '',
       password: '',
+      confirmPassword: '',
     },
   });
 
-  const handleEmailSignIn = async (values: SignInFormValues) => {
+  const handleSignUp = async (values: SignUpFormValues) => {
     setLoading(true);
     setAuthError(null);
     
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: values.email.trim(),
-        password: values.password,
-      });
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      router.replace('/');
-    } catch (error) {
-      setAuthError(error instanceof Error ? error.message : 'Sign in failed');
-    } finally {
+    const emailExists = await checkEmailExistsMutation.mutateAsync(values.email.trim());
+    if (emailExists) {
+      setAuthError('An account with this email already exists. Please sign in instead.');
       setLoading(false);
+      return;
     }
-  };
 
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
-    setAuthError(null);
-
-    try {
-      if(await GoogleSignin.hasPlayServices()) {
-        const userInfo = await GoogleSignin.signIn();
-        if (!userInfo?.data?.idToken) {
-          throw new Error('Google sign in cancelled');
-        }
-
-        const { error } = await supabase.auth.signInWithIdToken({
-          provider: 'google',
-          token: userInfo.data.idToken,
-        });
-  
-        if (error) {
-          throw new Error(error.message);
-        }
-  
-        router.replace('/');
-      }
-    } catch (error) {
-      setAuthError(error instanceof Error ? error.message : 'Sign in failed');
-    } finally {
+    const { error } = await supabase.auth.signUp({
+      email: values.email.trim(),
+      password: values.password,
+      options: {
+        emailRedirectTo: 'moim://auth/callback',
+      },
+    });
+    
+    if (error) {
+      setAuthError(error.message);
       setLoading(false);
+      return;
     }
+
+    setLoading(false);
+    // Navigate to email verification screen
+    router.replace(`/auth/verify-email?email=${encodeURIComponent(values.email.trim())}`);
   };
 
   return (
@@ -112,9 +94,13 @@ export default function SignInScreen() {
               {/* Header */}
               <View className="items-center mb-8">
                 <Logo size="xl" className="mb-4" />
+                <H1 className="text-center mb-2">Create Account</H1>
+                <P className="text-center text-muted-foreground">
+                  Join the conversation
+                </P>
               </View>
               
-              {/* Email/Password Form */}
+              {/* Sign Up Form */}
               <Form {...form}>
                 <View>
                   {/* Global Auth Error */}
@@ -151,14 +137,36 @@ export default function SignInScreen() {
                     control={form.control}
                     name="password"
                     render={({ field, fieldState }) => (
-                      <FormItem className="mb-6">
+                      <FormItem className="mb-4">
                         <FormLabel>Password</FormLabel>
                         <FormControl>
                           <Input
                             value={field.value}
                             onChangeText={field.onChange}
                             onBlur={field.onBlur}
-                            placeholder="Enter your password"
+                            placeholder="Create a strong password"
+                            secureTextEntry
+                            autoCapitalize="none"
+                            error={!!fieldState.error}
+                          />
+                        </FormControl>
+                        <FormMessage>{fieldState.error?.message}</FormMessage>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="confirmPassword"
+                    render={({ field, fieldState }) => (
+                      <FormItem className="mb-6">
+                        <FormLabel>Confirm Password</FormLabel>
+                        <FormControl>
+                          <Input
+                            value={field.value}
+                            onChangeText={field.onChange}
+                            onBlur={field.onBlur}
+                            placeholder="Confirm your password"
                             secureTextEntry
                             autoCapitalize="none"
                             error={!!fieldState.error}
@@ -170,54 +178,36 @@ export default function SignInScreen() {
                   />
                   
                   <Button
-                    onPress={form.handleSubmit(handleEmailSignIn)}
-                    disabled={loading}
+                    onPress={form.handleSubmit(handleSignUp)}
+                    disabled={loading || checkEmailExistsMutation.isPending}
                     className="w-full"
                   >
                     <Text className="text-primary-foreground font-semibold">
-                      {loading ? 'Signing In...' : 'Sign In'}
+                      {loading || checkEmailExistsMutation.isPending ? 'Creating Account...' : 'Create Account'}
                     </Text>
                   </Button>
                 </View>
               </Form>
               
-              {/* Sign Up Link */}
-              <View className="flex-row justify-center items-center mt-6">
+              {/* Sign In Link */}
+              <View className="flex-row justify-center items-center mt-6 mb-4">
                 <Text className="text-muted-foreground text-sm">
-                  Don't have an account?
+                  Already have an account?
                 </Text>
                 <Button
-                  onPress={() => router.replace('/auth/signup')}
+                  onPress={() => router.replace('/auth/signin')}
                   variant="link"
                   className="p-0 h-auto ml-1"
                 >
                   <Text className="text-primary text-sm font-medium">
-                    Sign Up
+                    Sign In
                   </Text>
                 </Button>
               </View>
               
-              {/* Divider */}
-              <View className="flex-row items-center my-6">
-                <View className="flex-1 h-px bg-border" />
-                <Text className="text-muted-foreground text-sm mx-4">or</Text>
-                <View className="flex-1 h-px bg-border" />
-              </View>
-              
-              {/* Google Sign In */}
-              <View className="mb-8">
-                <View className="w-full flex-row items-center justify-center">
-                  <GoogleSigninButton
-                    size={GoogleSigninButton.Size.Wide}
-                    color={GoogleSigninButton.Color.Dark}
-                    onPress={handleGoogleSignIn}
-                  />
-                </View>
-              </View>
-              
               {/* Terms */}
               <Muted className="text-center text-xs leading-4">
-                By signing in, you agree to our Terms of Service and Privacy Policy
+                By creating an account, you agree to our Terms of Service and Privacy Policy
               </Muted>
             </View>
           </View>
@@ -225,4 +215,4 @@ export default function SignInScreen() {
       </TouchableWithoutFeedback>
     </SafeAreaView>
   );
-} 
+}

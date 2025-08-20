@@ -15,6 +15,7 @@ export interface UserProfile {
   is_onboarded: boolean;
   neighborhood_distance_km: number;
   address?: Address | null;
+  notification_enabled: boolean;
 }
 
 export interface ChatRoomParticipant {

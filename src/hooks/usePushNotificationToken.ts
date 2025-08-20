@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
@@ -13,7 +13,7 @@ Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
-    shouldSetBadge: false,
+    shouldSetBadge: true,
     shouldShowBanner: true,
     shouldShowList: true,
   }),
@@ -71,7 +71,29 @@ function cleanupNotificationListeners(
   }
 }
 
-export function usePushNotificationToken() {
+interface PushNotificationContextType {
+  register: (userId: string) => Promise<void>;
+  setBadgeCount: (count: number) => Promise<void>;
+  decrementBadgeCount: (count: number) => Promise<void>;
+  isLoading: boolean;
+  error: PushNotificationError | null;
+}
+
+const PushNotificationContext = createContext<PushNotificationContextType | null>(null);
+
+export const usePushNotificationContext = () => {
+  const context = useContext(PushNotificationContext);
+  if (!context) {
+    throw new Error('usePushNotificationContext must be used within PushNotificationProvider');
+  }
+  return context;
+};
+
+interface PushNotificationProviderProps {
+  children: React.ReactNode;
+}
+
+export function PushNotificationProvider({ children }: PushNotificationProviderProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<PushNotificationError | null>(null);
   const router = useRouter();
@@ -86,6 +108,16 @@ export function usePushNotificationToken() {
       cleanupNotificationListeners(notificationListener, responseListener);
     };
   }, [router]);
+
+  const setBadgeCount = async (count: number): Promise<void> => {
+    await Notifications.setBadgeCountAsync(count);
+  };
+
+  const decrementBadgeCount = async (count: number): Promise<void> => {
+    const currentBadgeCount = await Notifications.getBadgeCountAsync();
+    const newBadgeCount = Math.max(0, currentBadgeCount - count);
+    await Notifications.setBadgeCountAsync(newBadgeCount);
+  };
 
   const register = async (userId: string): Promise<void> => {
     setIsLoading(true);
@@ -108,7 +140,13 @@ export function usePushNotificationToken() {
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       
       if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
+        const { status } = await Notifications.requestPermissionsAsync({
+          ios: {
+            allowAlert: true,
+            allowBadge: true,
+            allowSound: true,
+          }
+        });
         notificationStatus = status;
       } else {
         notificationStatus = existingStatus;
@@ -151,9 +189,18 @@ export function usePushNotificationToken() {
     }
   };
 
-  return {
+  const contextValue = {
     register,
+    setBadgeCount,
+    decrementBadgeCount,
     isLoading,
     error,
   };
+
+  return React.createElement(
+    PushNotificationContext.Provider,
+    { value: contextValue },
+    children
+  );
 }
+

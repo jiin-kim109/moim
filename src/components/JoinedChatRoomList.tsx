@@ -43,7 +43,7 @@ function JoinedChatRoomListItem({ chatRoom, userId, latestMessage, onPress }: Jo
       {/* Thumbnail */}
       <Image 
         source={chatroomItem.chatroom.thumbnail_url ? { uri: chatroomItem.chatroom.thumbnail_url } : require('@assets/chatroom-thumbnail-default.png')}
-        className="w-20 h-20 rounded-3xl mr-4 flex-shrink-0"
+        className="w-16 h-16 rounded-2xl mr-4 flex-shrink-0"
         contentFit='cover'
       />
       
@@ -52,12 +52,12 @@ function JoinedChatRoomListItem({ chatRoom, userId, latestMessage, onPress }: Jo
         {/* Top row: Chat room name, participant count, and timestamp */}
         <View className="flex-row items-center justify-between mb-1">
           <View className="flex-row items-center flex-1">
-            <Text className="text-lg font-medium text-gray-900" numberOfLines={1}>
+            <Text className="text-base font-medium text-gray-900" numberOfLines={1}>
               {(chatroomItem.chatroom.title ?? '').length > 25 
                 ? `${(chatroomItem.chatroom.title ?? '').substring(0, 25)}...` 
                 : (chatroomItem.chatroom.title ?? 'Untitled')}
             </Text>
-            <Text className="text-base text-gray-500 ml-3">
+            <Text className="text-base text-gray-500 ml-2">
               {chatroomItem.chatroom.participant_count}
             </Text>
           </View>

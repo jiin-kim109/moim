@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
         chatroom_participants!inner(
           user_id,
           nickname,
-          user_profile(push_notification_token)
+          user_profile(push_notification_token, notification_enabled)
         )
       `)
       .eq('id', message.chatroom_id)
@@ -56,9 +56,10 @@ Deno.serve(async (req) => {
       (p: any) => p.user_id !== message.sender_id
     )
 
-    // Filter participants with valid push tokens
+    // Temporary filter participants with valid push tokens and notifications enabled
     const participantTokens = otherParticipants.reduce((acc: string[], participant: any) => {
-      if (participant.user_profile?.push_notification_token) {
+      if (participant.user_profile?.push_notification_token && 
+          participant.user_profile?.notification_enabled !== false) {
         acc.push(participant.user_profile.push_notification_token)
       }
       return acc

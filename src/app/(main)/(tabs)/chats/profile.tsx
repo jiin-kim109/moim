@@ -6,14 +6,14 @@ import { Text } from '@components/ui/text';
 import { Skeleton } from '@components/ui/skeleton';
 import { Session } from '@supabase/supabase-js';
 import { useRouter } from 'expo-router';
-import { useGetCurrentUserProfile } from '@hooks/useGetCurrentUserProfile';
+import { useDeleteAccount } from '@hooks/useDeleteAccount';
 import { Button } from '@components/ui/button';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
   
-  const { data: userProfile } = useGetCurrentUserProfile();
+  const deleteAccountMutation = useDeleteAccount();
 
   useEffect(() => {
     // Get current session
@@ -36,11 +36,7 @@ export default function ProfileScreen() {
 
   const handleSignOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        Alert.alert('Sign Out Error', error.message);
-      }
+      await supabase.auth.signOut();
       router.replace('/');
     } catch (error) {
       console.error('Sign out error:', error);
@@ -61,21 +57,12 @@ export default function ProfileScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            try {
-              const { error } = await supabase.auth.admin.deleteUser(
-                session?.user?.id || ''
-              );
-              
-              if (error) {
-                Alert.alert('Delete Account Error', error.message);
-                return;
-              }
-              
-              router.replace('/auth/signin');
-            } catch (error) {
-              console.error('Delete account error:', error);
-              Alert.alert('Delete Account Error', 'An unexpected error occurred');
-            }
+            await deleteAccountMutation.mutateAsync(undefined, {
+              onError: (error) => {
+                Alert.alert('Delete Account Error', error.message || 'An unexpected error occurred');
+              },
+            });
+            router.replace('/auth/signin');
           },
         },
       ]
@@ -123,10 +110,13 @@ export default function ProfileScreen() {
                 
                 <Button
                   onPress={handleDeleteAccount}
+                  disabled={deleteAccountMutation.isPending}
                   variant="destructive"
                   className="w-full"
                 >
-                  <Text className="text-white font-medium">Delete Account</Text>
+                  <Text className="text-white font-medium">
+                    {deleteAccountMutation.isPending ? 'Deleting Account...' : 'Delete Account'}
+                  </Text>
                 </Button>
               </View>
             </View>

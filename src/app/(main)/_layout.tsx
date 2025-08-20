@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { ChatMessageSubscriptionProvider, useChatMessageSubscriptionContext } from '@hooks/message/useChatMessageSubscription';
+
 import { useGetCurrentUserProfile } from '@hooks/useGetCurrentUserProfile';
 import { useNetworkStatus } from '@hooks/useNetworkStatus';
 import { AppState } from 'react-native';

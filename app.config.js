@@ -8,11 +8,6 @@ export default {
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
     newArchEnabled: true,
-    splash: {
-      image: "./assets/splash-icon.png",
-      resizeMode: "contain",
-      backgroundColor: "#ffffff"
-    },
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.moim",
@@ -23,13 +18,10 @@ export default {
     android: {
       package: "com.moim",
       adaptiveIcon: {
-        foregroundImage: "./assets/adaptive-icon.png",
+        foregroundImage: "./assets/icon.png",
         backgroundColor: "#ffffff"
       },
       edgeToEdgeEnabled: true
-    },
-    web: {
-      favicon: "./assets/favicon.png"
     },
     assetBundlePatterns: [
       "assets/*",
@@ -57,6 +49,12 @@ export default {
           locationAlwaysPermission: "Allow Moim to use your location to find nearby communities and chatrooms.",
           isIosBackgroundLocationEnabled: false,
           isAndroidBackgroundLocationEnabled: false
+        }
+      ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.948856109331-erbv9k0mnef62ci4o8cd6200mgbv59nr"
         }
       ]
     ],

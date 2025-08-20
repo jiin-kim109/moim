@@ -64,7 +64,7 @@ export default function ChatroomScreen() {
   // Only update if we don't have a last read message yet (first time entering chatroom)
   // or if there are newer messages since our last read
   useEffect(() => {
-    if (!messagesData?.pages?.[0] || lastReadMessageLoading || !currentUserId) {
+    if (!(messagesData?.pages?.[0] as any)?.messages?.[0] || lastReadMessageLoading || !currentUserId) {
       return;
     }
 
