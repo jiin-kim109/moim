@@ -3,7 +3,7 @@ export default {
     name: "moim",
     slug: "moim",
     scheme: "moim",
-    version: "1.0.0",
+    version: "1.0.1",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
