@@ -98,7 +98,7 @@ jobs:
           
           git add app.config.js
           git commit -m "chore: bump version to $TAG_NAME"
-          git push origin HEAD:main
+          git push origin HEAD
 
       - name: Output success
         if: steps.version-check.outputs.updated == 'true'
