@@ -7,6 +7,8 @@ on:
       - main
   release:
     types: [prereleased]
+    branches-ignore:
+      - main
 
 jobs:
   update-version:
