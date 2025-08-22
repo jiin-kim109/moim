@@ -10,8 +10,6 @@ import { useUpdateUserProfile } from '@hooks/useUpdateUserProfile';
 import { usePushNotificationContext } from '@hooks/usePushNotificationToken';
 import { toast } from 'sonner-native';
 
-
-
 export default function ChatsScreen() {
   const router = useRouter();
   

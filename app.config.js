@@ -8,15 +8,20 @@ export default {
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
     newArchEnabled: true,
+    splash: {
+      image: './assets/icon.png',
+      resizeMode: 'contain',
+      backgroundColor: '#FFFFFF'
+    },
     ios: {
-      supportsTablet: true,
-      bundleIdentifier: "com.moim",
+      supportsTablet: false,
+      bundleIdentifier: "com.moim.ios",
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false
       }
     },
     android: {
-      package: "com.moim",
+      package: "com.moim.android",
       adaptiveIcon: {
         foregroundImage: "./assets/icon.png",
         backgroundColor: "#ffffff"

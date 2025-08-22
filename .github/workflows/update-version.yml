@@ -1,0 +1,107 @@
+name: Update Version
+
+on:
+  push:
+    tags:
+      - '*'
+    branches:
+      - main
+
+jobs:
+  update-version:
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    
+    outputs:
+      version-updated: ${{ steps.version-check.outputs.updated }}
+      tag-name: ${{ steps.extract-tag.outputs.tag }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Extract tag name
+        id: extract-tag
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "Extracted tag: $TAG_NAME"
+
+      - name: Validate tag format and check version
+        id: version-check
+        run: |
+          TAG_NAME="${{ steps.extract-tag.outputs.tag }}"
+          
+          # Validate tag format (should be semantic version like 1.0.1)
+          if ! echo "$TAG_NAME" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Error: Tag '$TAG_NAME' is not a valid semantic version (e.g., 1.0.1)"
+            exit 1
+          fi
+          
+          # Read current version from app.config.js using grep and sed
+          CURRENT_VERSION=$(grep -o 'version: "[^"]*"' app.config.js | sed 's/version: "\(.*\)"/\1/')
+          
+          echo "Current version in app.config.js: $CURRENT_VERSION"
+          echo "Tag version: $TAG_NAME"
+          
+          # Function to compare versions (returns 0 if tag > current, 1 if tag <= current)
+          compare_versions() {
+            local tag_version=$1
+            local current_version=$2
+            
+            # Convert versions to arrays
+            IFS='.' read -ra TAG_PARTS <<< "$tag_version"
+            IFS='.' read -ra CURRENT_PARTS <<< "$current_version"
+            
+            # Compare major, minor, patch
+            for i in 0 1 2; do
+              tag_part=${TAG_PARTS[i]:-0}
+              current_part=${CURRENT_PARTS[i]:-0}
+              
+              if [ "$tag_part" -gt "$current_part" ]; then
+                return 0  # tag > current
+              elif [ "$tag_part" -lt "$current_part" ]; then
+                return 1  # tag < current
+              fi
+            done
+            
+            return 1  # tag == current
+          }
+          
+          if compare_versions "$TAG_NAME" "$CURRENT_VERSION"; then
+            echo "Version check passed. Tag version ($TAG_NAME) is higher than current version ($CURRENT_VERSION)"
+            echo "updated=true" >> $GITHUB_OUTPUT
+          else
+            echo "Error: Tag version ($TAG_NAME) is not higher than current version ($CURRENT_VERSION)"
+            echo "updated=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Update version in app.config.js
+        if: steps.version-check.outputs.updated == 'true'
+        run: |
+          TAG_NAME="${{ steps.extract-tag.outputs.tag }}"
+          
+          # Update version in app.config.js using sed
+          sed -i "s/version: \"[^\"]*\"/version: \"$TAG_NAME\"/" app.config.js
+          echo "Updated version to $TAG_NAME in app.config.js"
+
+      - name: Commit version update
+        if: steps.version-check.outputs.updated == 'true'
+        run: |
+          TAG_NAME="${{ steps.extract-tag.outputs.tag }}"
+          
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          git add app.config.js
+          git commit -m "chore: bump version to $TAG_NAME"
+          git push origin HEAD:main
+
+      - name: Output success
+        if: steps.version-check.outputs.updated == 'true'
+        run: |
+          echo "✅ Version successfully updated to ${{ steps.extract-tag.outputs.tag }}"

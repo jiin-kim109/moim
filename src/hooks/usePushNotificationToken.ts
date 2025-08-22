@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
-import { Platform } from 'react-native';
+import { Platform, AppState } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import supabase from '../lib/supabase';
@@ -37,11 +37,17 @@ function handleNotificationNavigation(router: any, data: NotificationData, navig
 function setupNotificationListeners(
   router: any,
   notificationListener: { current: Notifications.EventSubscription | null },
-  responseListener: { current: Notifications.EventSubscription | null }
+  responseListener: { current: Notifications.EventSubscription | null },
+  incrementBadgeCount: () => Promise<void>
 ) {
-  // Handle notifications received while app is foregrounded
-  notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-    console.debug('Notification received when foregrounded:', notification);
+  // Handle notifications received while app is running (foreground or background)
+  notificationListener.current = Notifications.addNotificationReceivedListener(async (notification) => {
+    console.debug('Notification received:', notification);
+    
+    const currentState = AppState.currentState;
+    if (currentState === 'background' || currentState === 'inactive') {
+      await incrementBadgeCount();
+    }
   });
 
   // Handle notification responses (when user taps notification)
@@ -75,6 +81,7 @@ interface PushNotificationContextType {
   register: (userId: string) => Promise<void>;
   setBadgeCount: (count: number) => Promise<void>;
   decrementBadgeCount: (count: number) => Promise<void>;
+  incrementBadgeCount: () => Promise<void>;
   isLoading: boolean;
   error: PushNotificationError | null;
 }
@@ -102,7 +109,7 @@ export function PushNotificationProvider({ children }: PushNotificationProviderP
 
   // Set up notification listeners
   useEffect(() => {
-    setupNotificationListeners(router, notificationListener, responseListener);
+    setupNotificationListeners(router, notificationListener, responseListener, incrementBadgeCount);
 
     return () => {
       cleanupNotificationListeners(notificationListener, responseListener);
@@ -117,6 +124,11 @@ export function PushNotificationProvider({ children }: PushNotificationProviderP
     const currentBadgeCount = await Notifications.getBadgeCountAsync();
     const newBadgeCount = Math.max(0, currentBadgeCount - count);
     await Notifications.setBadgeCountAsync(newBadgeCount);
+  };
+
+  const incrementBadgeCount = async (): Promise<void> => {
+    const currentBadgeCount = await Notifications.getBadgeCountAsync();
+    await Notifications.setBadgeCountAsync(currentBadgeCount + 1);
   };
 
   const register = async (userId: string): Promise<void> => {
@@ -193,6 +205,7 @@ export function PushNotificationProvider({ children }: PushNotificationProviderP
     register,
     setBadgeCount,
     decrementBadgeCount,
+    incrementBadgeCount,
     isLoading,
     error,
   };

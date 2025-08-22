@@ -12,19 +12,7 @@
       }
     },
     "production": {
-      "distribution": "store",
-      "autoIncrement": true,
-      "ios": {
-        "resourceClass": "medium"
-      },
-      "android": {
-        "resourceClass": "medium"
-      }
-    }
-  },
-  "submit": {
-    "production": {
-      "ios": {}
+      "autoIncrement": true
     }
   }
 }

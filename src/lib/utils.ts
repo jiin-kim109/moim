@@ -59,3 +59,10 @@ export function useDebouncedFunction<T extends (...args: any[]) => any>(
     }, delay);
   }) as T;
 }
+
+export function getEnvironment(): 'production' | 'development' {
+  if (process.env.EXPO_PUBLIC_ENV !== 'production' && process.env.EXPO_PUBLIC_ENV !== 'development') {
+    throw new Error('EXPO_PUBLIC_ENV is not set');
+  }
+  return process.env.EXPO_PUBLIC_ENV as 'production' | 'development';
+}
