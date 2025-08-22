@@ -1,4 +1,4 @@
-name: Update Version
+name: Deploy
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
       - '*'
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   update-version:
@@ -105,3 +106,103 @@ jobs:
         if: steps.version-check.outputs.updated == 'true'
         run: |
           echo "✅ Version successfully updated to ${{ steps.extract-tag.outputs.tag }}"
+
+  # Deploy iOS APP
+  deploy-ios:
+    needs: update-version
+    if: needs.update-version.outputs.version-updated == 'true'
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Get latest changes after version update
+        run: |
+          git pull origin main
+
+      - name: Get current version
+        id: get-version
+        run: |
+          # Read version from app.config.js (already updated by previous job)
+          VERSION=$(grep -o 'version: "[^"]*"' app.config.js | sed 's/version: "\(.*\)"/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Deploying version: $VERSION"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '23'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: 🏗 Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_ACCESS_TOKEN }}
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Setup CocoaPods
+        run: |
+          cd ios
+          pod install
+
+      - name: Build iOS app
+        env:
+          EXPO_PUBLIC_ENV: production
+        run: |
+          echo "🔨 Building iOS app for production..."
+          eas build --platform ios --profile production --local --non-interactive
+
+      - name: Find IPA file
+        id: find-ipa
+        run: |
+          # Find the most recent .ipa file in the current directory
+          IPA_FILE=$(find . -name "*.ipa" -type f -exec ls -la {} \; | sort -k 6,7 | tail -n 1 | awk '{print $NF}')
+          
+          if [ -z "$IPA_FILE" ]; then
+            echo "Error: No .ipa file found"
+            exit 1
+          fi
+          
+          echo "Found IPA file: $IPA_FILE"
+          echo "ipa_path=$IPA_FILE" >> $GITHUB_OUTPUT
+
+      - name: Submit to App Store
+        env:
+          EXPO_APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.EXPO_APPLE_APP_SPECIFIC_PASSWORD }}
+          EXPO_APPLE_ID: ${{ secrets.EXPO_APPLE_ID }}
+        run: |
+          echo "📤 Submitting to App Store..."
+          eas submit -p ios --non-interactive --path "${{ steps.find-ipa.outputs.ipa_path }}"
+
+      - name: Clean up build artifacts
+        if: always()
+        run: |
+          # Clean up large build files to save storage
+          rm -f *.ipa
+          rm -rf build/
+
+      - name: Output success
+        run: |
+          echo "✅ iOS app successfully built and submitted for version: ${{ steps.get-version.outputs.version }}"
+          echo "🎉 Build and submission completed successfully!"
+
+  # Deploy Android APP
+  # deploy-android:
+  #   needs: update-version
+  #   if: needs.update-version.outputs.version-updated == 'true'
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Deploy Android
+  #       run: echo "Android deployment will be implemented later"
