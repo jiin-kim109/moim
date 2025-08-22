@@ -75,8 +75,11 @@ jobs:
           if compare_versions "$TAG_NAME" "$CURRENT_VERSION"; then
             echo "Version check passed. Tag version ($TAG_NAME) is higher than current version ($CURRENT_VERSION)"
             echo "updated=true" >> $GITHUB_OUTPUT
+          elif [ "$TAG_NAME" = "$CURRENT_VERSION" ]; then
+            echo "Version already matches. Tag version ($TAG_NAME) equals current version ($CURRENT_VERSION). Skipping update."
+            echo "updated=false" >> $GITHUB_OUTPUT
           else
-            echo "Error: Tag version ($TAG_NAME) is not higher than current version ($CURRENT_VERSION)"
+            echo "Error: Tag version ($TAG_NAME) is lower than current version ($CURRENT_VERSION)"
             echo "updated=false" >> $GITHUB_OUTPUT
             exit 1
           fi
@@ -107,10 +110,10 @@ jobs:
         run: |
           echo "✅ Version successfully updated to ${{ steps.extract-tag.outputs.tag }}"
 
-  # Deploy iOS APP
-  deploy-ios:
+  # Build iOS APP
+  build-ios:
     needs: update-version
-    if: needs.update-version.outputs.version-updated == 'true'
+    if: always() && needs.update-version.result == 'success'
     runs-on: macos-latest
     
     steps:
@@ -177,6 +180,69 @@ jobs:
           
           echo "Found IPA file: $IPA_FILE"
           echo "ipa_path=$IPA_FILE" >> $GITHUB_OUTPUT
+          echo "ipa_name=$(basename $IPA_FILE)" >> $GITHUB_OUTPUT
+
+      - name: Upload IPA as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-${{ steps.get-version.outputs.version }}
+          path: ${{ steps.find-ipa.outputs.ipa_path }}
+          retention-days: 30
+
+      - name: Output build success
+        run: |
+          echo "✅ iOS app successfully built for version: ${{ steps.get-version.outputs.version }}"
+          echo "📦 IPA file uploaded as artifact: ${{ steps.find-ipa.outputs.ipa_name }}"
+
+  # Deploy iOS APP
+  deploy-ios:
+    needs: [update-version, build-ios]
+    if: always() && needs.build-ios.result == 'success'
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Get latest changes after version update
+        run: |
+          git pull origin main
+
+      - name: Get current version
+        id: get-version
+        run: |
+          # Read version from app.config.js (already updated by previous job)
+          VERSION=$(grep -o 'version: "[^"]*"' app.config.js | sed 's/version: "\(.*\)"/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Deploying version: $VERSION"
+
+      - name: Download IPA artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ios-build-${{ steps.get-version.outputs.version }}
+          path: ./
+
+      - name: Find downloaded IPA file
+        id: find-ipa
+        run: |
+          IPA_FILE=$(find . -name "*.ipa" -type f | head -n 1)
+          
+          if [ -z "$IPA_FILE" ]; then
+            echo "Error: No .ipa file found in artifacts"
+            exit 1
+          fi
+          
+          echo "Found IPA file: $IPA_FILE"
+          echo "ipa_path=$IPA_FILE" >> $GITHUB_OUTPUT
+
+      - name: 🏗 Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_ACCESS_TOKEN }}
 
       - name: Submit to App Store
         env:
@@ -186,17 +252,10 @@ jobs:
           echo "📤 Submitting to App Store..."
           eas submit -p ios --non-interactive --path "${{ steps.find-ipa.outputs.ipa_path }}"
 
-      - name: Clean up build artifacts
-        if: always()
+      - name: Output deploy success
         run: |
-          # Clean up large build files to save storage
-          rm -f *.ipa
-          rm -rf build/
-
-      - name: Output success
-        run: |
-          echo "✅ iOS app successfully built and submitted for version: ${{ steps.get-version.outputs.version }}"
-          echo "🎉 Build and submission completed successfully!"
+          echo "✅ iOS app successfully submitted to App Store for version: ${{ steps.get-version.outputs.version }}"
+          echo "🎉 Deployment completed successfully!"
 
   # Deploy Android APP
   # deploy-android:
