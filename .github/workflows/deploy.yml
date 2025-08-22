@@ -111,6 +111,10 @@ jobs:
     if: always() && needs.update-version.result == 'success'
     runs-on: macos-latest
     
+    outputs:
+      build-profile: ${{ steps.get-version.outputs.build_profile }}
+      version: ${{ steps.get-version.outputs.version }}
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -122,13 +126,24 @@ jobs:
         run: |
           git pull origin main
 
-      - name: Get current version
+      - name: Get current version and check release type
         id: get-version
         run: |
           # Read version from app.config.js (already updated by previous job)
           VERSION=$(grep -o 'version: "[^"]*"' app.config.js | sed 's/version: "\(.*\)"/\1/')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Deploying version: $VERSION"
+          
+          # Check if this is a pre-release
+          IS_PRERELEASE="${{ github.event.release.prerelease }}"
+          echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+          
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            echo "Building pre-release version: $VERSION"
+            echo "build_profile=development" >> $GITHUB_OUTPUT
+          else
+            echo "Building production version: $VERSION"
+            echo "build_profile=production" >> $GITHUB_OUTPUT
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -150,49 +165,46 @@ jobs:
         with:
           xcode-version: latest-stable
 
-      - name: Setup CocoaPods
-        run: |
-          cd ios
-          pod install
-
       - name: Build iOS app
-        env:
-          EXPO_PUBLIC_ENV: production
         run: |
-          echo "🔨 Building iOS app for production..."
-          eas build --platform ios --profile production --local --non-interactive
+          eas build --platform ios --profile ${{ steps.get-version.outputs.build_profile }} --local --non-interactive
 
-      - name: Find IPA file
-        id: find-ipa
+      - name: Find build artifact
+        id: find-artifact
         run: |
-          # Find the most recent .ipa file in the current directory
-          IPA_FILE=$(find . -name "*.ipa" -type f -exec ls -la {} \; | sort -k 6,7 | tail -n 1 | awk '{print $NF}')
+          BUILD_PROFILE="${{ steps.get-version.outputs.build_profile }}"
           
-          if [ -z "$IPA_FILE" ]; then
-            echo "Error: No .ipa file found"
+          if [ "$BUILD_PROFILE" = "production" ]; then
+            # Find the most recent .ipa file for production builds
+            ARTIFACT_FILE=$(find . -name "*.ipa" -type f -exec ls -la {} \; | sort -k 6,7 | tail -n 1 | awk '{print $NF}')
+          else
+            # Find the most recent .tar.gz file for development builds
+            ARTIFACT_FILE=$(find . -name "*.tar.gz" -type f -exec ls -la {} \; | sort -k 6,7 | tail -n 1 | awk '{print $NF}')
+          fi
+          
+          if [ -z "$ARTIFACT_FILE" ]; then
+            echo "Error: No build artifact found for $BUILD_PROFILE profile"
             exit 1
           fi
           
-          echo "Found IPA file: $IPA_FILE"
-          echo "ipa_path=$IPA_FILE" >> $GITHUB_OUTPUT
-          echo "ipa_name=$(basename $IPA_FILE)" >> $GITHUB_OUTPUT
+          echo "artifact_path=$ARTIFACT_FILE" >> $GITHUB_OUTPUT
+          echo "artifact_name=$(basename $ARTIFACT_FILE)" >> $GITHUB_OUTPUT
 
-      - name: Upload IPA as artifact
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ios-build-${{ steps.get-version.outputs.version }}
-          path: ${{ steps.find-ipa.outputs.ipa_path }}
+          name: ios-build-${{ steps.get-version.outputs.build_profile }}-${{ steps.get-version.outputs.version }}
+          path: ${{ steps.find-artifact.outputs.artifact_path }}
           retention-days: 30
 
       - name: Output build success
         run: |
-          echo "✅ iOS app successfully built for version: ${{ steps.get-version.outputs.version }}"
-          echo "📦 IPA file uploaded as artifact: ${{ steps.find-ipa.outputs.ipa_name }}"
+          echo "📦 Artifact uploaded: ${{ steps.find-artifact.outputs.artifact_name }}"
 
-  # Deploy iOS APP
+  # Deploy iOS APP (only for production builds)
   deploy-ios:
     needs: [update-version, build-ios]
-    if: always() && needs.build-ios.result == 'success'
+    if: always() && needs.build-ios.result == 'success' && needs.build-ios.outputs.build-profile == 'production'
     runs-on: macos-latest
     
     steps:
@@ -217,12 +229,13 @@ jobs:
       - name: Download IPA artifact
         uses: actions/download-artifact@v4
         with:
-          name: ios-build-${{ steps.get-version.outputs.version }}
+          name: ios-build-production-${{ needs.build-ios.outputs.version }}
           path: ./
 
       - name: Find downloaded IPA file
         id: find-ipa
         run: |
+          # For production builds, we know it's an .ipa file
           IPA_FILE=$(find . -name "*.ipa" -type f | head -n 1)
           
           if [ -z "$IPA_FILE" ]; then
@@ -249,7 +262,7 @@ jobs:
 
       - name: Output deploy success
         run: |
-          echo "✅ iOS app successfully submitted to App Store for version: ${{ steps.get-version.outputs.version }}"
+          echo "✅ iOS app successfully submitted to App Store for version: ${{ needs.build-ios.outputs.version }}"
           echo "🎉 Deployment completed successfully!"
 
   # Deploy Android APP
